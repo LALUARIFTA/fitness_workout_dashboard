@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseFit — Interactive Workout & Fitness Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-outer: #DDE1EE;
+      --bg-shell: #F8F9FC;
+      --accent-orange: #F26430;
+      --accent-red: #FF5660;
+      --accent-green: #63D471;
+      --text-dark: #1E2235;
+      --text-muted: #8E95A9;
+      --card-radius: 28px;
+      --shell-radius: 38px;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-outer);
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(255, 255, 255, 0.45) 0px, transparent 50%),
+        radial-gradient(at 85% 85%, rgba(198, 206, 235, 0.6) 0px, transparent 50%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--text-dark);
+    }
+
+    /* Fixed Dimensions Application Shell - Identical across all menus */
+    .app-shell {
+      width: 1200px;
+      height: 800px;
+      max-width: 96vw;
+      max-height: 94vh;
+      background-color: var(--bg-shell);
+      border-radius: var(--shell-radius);
+      box-shadow: 
+        0 30px 70px rgba(28, 34, 61, 0.12),
+        0 4px 16px rgba(28, 34, 61, 0.04),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Custom Sleek Scrollbar matching reference UI */
+    .custom-scroll {
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: #B4B9C9 transparent;
+      scroll-behavior: smooth;
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+      margin: 8px 0;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #B4B9C9;
+      border-radius: 999px;
+      transition: background-color 0.2s ease;
+    }
+
+    .custom-scroll:hover::-webkit-scrollbar-thumb {
+      background-color: #8890A6;
+    }
+
+    /* Smooth Menu & Day View Transitions */
+    .menu-view {
+      position: absolute;
+      inset: 0;
+      padding: 34px 38px 34px 12px;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(14px) scale(0.985);
+      transition: 
+        opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+
+    .menu-view.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+      z-index: 10;
+    }
+
+    .menu-view.exit-up {
+      opacity: 0;
+      transform: translateY(-14px) scale(0.985);
+    }
+
+    /* Staggered Card Entrance Animation */
+    @keyframes cardPopIn {
+      0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .animate-stagger-1 { animation: cardPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both; }
+    .animate-stagger-2 { animation: cardPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.10s both; }
+    .animate-stagger-3 { animation: cardPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both; }
+    .animate-stagger-4 { animation: cardPopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both; }
+
+    /* Sidebar Active Indicator Morphing */
+    .nav-pill-container {
+      background: #F0F2F8;
+      border-radius: 32px;
+      width: 54px;
+      padding: 8px 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      box-shadow: inset 0 1px 3px rgba(30, 34, 53, 0.04);
+    }
+
+    .nav-active-bubble {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      background: var(--accent-orange);
+      border-radius: 50%;
+      box-shadow: 0 8px 18px rgba(242, 100, 48, 0.38);
+      left: 6px;
+      top: 8px;
+      transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 1;
+    }
+
+    .nav-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      color: #4A5068;
+      transition: color 0.25s ease, transform 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .nav-btn.active {
+      color: #FFFFFF;
+    }
+
+    /* Tooltip on Sidebar Hover */
+    .nav-tooltip {
+      position: absolute;
+      left: 64px;
+      background: #1E2235;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-6px);
+      transition: all 0.2s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+      z-index: 50;
+    }
+
+    .nav-btn:hover .nav-tooltip {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Exercise Stage Animations */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(0.6deg); }
+    }
+
+    @keyframes kenBurnsWorkout {
+      0% { transform: scale(1.0) translate3d(0px, 0px, 0px); }
+      50% { transform: scale(1.065) translate3d(-6px, -4px, 0px); }
+      100% { transform: scale(1.0) translate3d(0px, 0px, 0px); }
+    }
+
+    @keyframes breathePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    .stage-figure-playing {
+      animation: floatSlow 2.6s ease-in-out infinite;
+    }
+
+    .stage-photo-playing {
+      animation: kenBurnsWorkout 5.5s ease-in-out infinite;
+    }
+
+    /* Heart Burst Particle Animation */
+    @keyframes heartPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.32); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); }
+    }
+
+    .heart-pop {
+      animation: heartPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes floatParticle {
+      0% { opacity: 1; transform: translate(0, 0) scale(0.8); }
+      100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(1.3); }
+    }
+
+    .heart-particle {
+      position: absolute;
+      pointer-events: none;
+      animation: floatParticle 0.75s ease-out forwards;
+    }
+
+    /* Exercise Item Row Hover & Active States */
+    .exercise-row {
+      border-radius: 18px;
+      padding: 8px 10px 8px 8px;
+      transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+    }
+
+    .exercise-row:hover {
+      background-color: #F6F8FD;
+      transform: translateX(3px);
+    }
+
+    .exercise-row.selected {
+      background-color: #F4F7FC;
+      border-color: rgba(242, 100, 48, 0.22);
+      box-shadow: 0 6px 18px rgba(30, 34, 53, 0.04);
+    }
+
+    /* Circular SVG Progress Ring Transition */
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.3s linear;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    /* Day Tab Transitions */
+    .day-tab {
+      position: relative;
+      transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: pointer;
+    }
+
+    .day-tab:hover {
+      color: #4B5267;
+      transform: translateY(-1px);
+    }
+
+    /* Responsive Scaling for Smaller Viewports while preserving aspect & internal scroll */
+    @media (max-width: 1100px) {
+      .app-shell {
+        width: 98vw;
+        height: 95vh;
+        grid-template-columns: 76px 1fr;
+      }
+      .menu-view {
+        padding: 20px 20px 20px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MAIN FIXED-SIZE APPLICATION SHELL -->
+  <div class="app-shell" id="appShell">
+
+    <!-- ==================== LEFT SIDEBAR (FIXED ACROSS ALL MENUS) ==================== -->
+    <aside class="flex flex-col items-center justify-between py-9 pl-3 pr-1 z-30 select-none">
+      
+      <!-- Top: Geometric 3D Lightning Bolt Logo (Exact Match to Reference) -->
+      <button onclick="triggerLogoPulse()" id="brandLogo" class="w-12 h-12 rounded-2xl flex items-center justify-center focus:outline-none group transition-transform duration-300 hover:scale-110" title="PulseFit Studio">
+        <svg width="30" height="34" viewBox="0 0 30 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Upper Left Wing -->
+          <path d="M16.5 2L5 17.5H15.5L16.5 2Z" fill="#3B3F54" class="transition-transform duration-300 group-hover:-translate-y-0.5"/>
+          <!-- Center Shadow Facet -->
+          <path d="M16.5 2L15.5 17.5L24.5 14.5L16.5 2Z" fill="#686D85" opacity="0.45"/>
+          <!-- Lower Right Sharp Bolt -->
+          <path d="M14.5 14.5L25 14.5L13 32L14.5 14.5Z" fill="#141726" class="transition-transform duration-300 group-hover:translate-y-0.5"/>
+        </svg>
+      </button>
+
+      <!-- Center: 5-Item Vertical Pill Navigation with Sliding Active Bubble -->
+      <nav class="nav-pill-container" aria-label="Main Navigation">
+        <!-- Morphing Orange Active Circle (Default index 1 = Workout Session) -->
+        <div id="navActiveBubble" class="nav-active-bubble" style="transform: translateY(52px);"></div>
+
+        <!-- Menu 0: Dashboard Overview -->
+        <button class="nav-btn" data-menu="0" onclick="switchMenu(0)" aria-label="Dashboard Overview">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M3.6 9h16.8"></path>
+            <path d="M11.5 3a17 17 0 0 0 0 18"></path>
+          </svg>
+          <span class="nav-tooltip">Dashboard Overview</span>
+        </button>
+
+        <!-- Menu 1: Workout Session (DEFAULT ACTIVE - Matches Reference Image) -->
+        <button class="nav-btn active" data-menu="1" onclick="switchMenu(1)" aria-label="Workout Session">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 12L19 9"></path>
+            <path d="M12 12V21"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="nav-tooltip">Workout Session</span>
+        </button>
+
+        <!-- Menu 2: Community & Friends -->
+        <button class="nav-btn" data-menu="2" onclick="switchMenu(2)" aria-label="Community & Friends">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="3"></circle>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span class="nav-tooltip">Community & Friends</span>
+        </button>
+
+        <!-- Menu 3: Analytics & Progress -->
+        <button class="nav-btn" data-menu="3" onclick="switchMenu(3)" aria-label="Analytics & Progress">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="12" y1="3" x2="12" y2="5"></line>
+            <line x1="12" y1="19" x2="12" y2="21"></line>
+            <line x1="3" y1="12" x2="5" y2="12"></line>
+            <line x1="19" y1="12" x2="21" y2="12"></line>
+          </svg>
+          <span class="nav-tooltip">Analytics & Progress</span>
+        </button>
+
+        <!-- Menu 4: Coach Chat & Settings -->
+        <button class="nav-btn" data-menu="4" onclick="switchMenu(4)" aria-label="Coach Chat & Settings">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+            <line x1="9" y1="11" x2="15" y2="11"></line>
+            <line x1="9" y1="14" x2="13" y2="14"></line>
+          </svg>
+          <span class="nav-tooltip">Coach & Settings</span>
+        </button>
+      </nav>
+
+      <!-- Bottom: Real Human User Profile Photo in Lavender Circle -->
+      <button onclick="switchMenu(4)" class="relative group focus:outline-none" title="Alex Rivera — Beginner (1021 pts)">
+        <div class="w-12 h-12 rounded-full bg-[#DCD6F7] p-0.5 flex items-center justify-center overflow-hidden shadow-sm border-2 border-white transition-transform duration-300 group-hover:scale-105">
+          <img 
+            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" 
+            alt="User Profile" 
+            class="w-full h-full rounded-full object-cover"
+            onerror="this.src='https://placehold.co/100x100/DCD6F7/1E2235?text=AR'"
+          />
+        </div>
+        <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#63D471] ring-2 ring-white"></span>
+      </button>
+
+    </aside>
+
+    <!-- ==================== RIGHT MAIN CONTENT AREA (5 FIXED-SIZE VIEWS) ==================== -->
+    <main class="relative w-full h-full overflow-hidden">
+
+      <!-- =========================================================================
+           MENU 0: DASHBOARD OVERVIEW (Fixed Container + Scrollable Sub-panels)
+           ========================================================================= -->
+      <section id="menu-0" class="menu-view">
+        <!-- Header Bar -->
+        <header class="flex items-center justify-between h-12 mb-5 shrink-0 px-1">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#F26430]"></span>
+            <h1 class="text-[22px] font-extrabold tracking-tight text-[#1E2235]">Dashboard Overview</h1>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-[#FFF3D1] text-[#D9821E]">Week 1 • Active Streak 4 Days 🔥</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="switchMenu(1)" class="px-4 py-2 rounded-xl bg-[#F26430] text-white text-xs font-bold shadow-md hover:bg-[#e05522] transition flex items-center gap-2">
+              <span>Resume Today's Workout</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Fixed 2-Column Content Grid matching Menu 1 dimensions -->
+        <div class="grid grid-cols-12 gap-7 flex-1 min-h-0">
+          <!-- Left Column (8 cols) -->
+          <div class="col-span-8 flex flex-col gap-6 h-full min-h-0">
+            <!-- Top Summary & Interactive Weekly Activity Chart Card (Fixed Height) -->
+            <div class="bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] h-[310px] shrink-0 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-[11px] font-extrabold tracking-wider uppercase text-[#8E95A9]">WEEKLY CALORIE & ACTIVITY</span>
+                  <h3 class="text-xl font-extrabold text-[#1E2235] mt-0.5">1,490 Kcal Burned <span class="text-xs font-semibold text-[#63D471] ml-1">+18% vs last week</span></h3>
+                </div>
+                <div class="flex gap-2 bg-[#F4F6FB] p-1 rounded-xl text-xs font-bold">
+                  <button onclick="updateDashboardChart('kcal', this)" class="dash-chart-tab px-3 py-1.5 rounded-lg bg-white text-[#1E2235] shadow-sm">Calories</button>
+                  <button onclick="updateDashboardChart('mins', this)" class="dash-chart-tab px-3 py-1.5 rounded-lg text-[#8E95A9]">Minutes</button>
+                </div>
+              </div>
+
+              <!-- Interactive Bar Chart -->
+              <div id="dashboardBarsContainer" class="grid grid-cols-7 gap-4 items-end h-36 pt-4 px-2">
+                <!-- Populated dynamically via JS -->
+              </div>
+
+              <!-- Quick 3 Pill Rings -->
+              <div class="grid grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-[#FFF3D1] flex items-center justify-center text-[#F26430] font-bold text-sm">💧</div>
+                  <div>
+                    <div class="text-xs font-extrabold text-[#1E2235]" id="waterCounterText">1.8 / 2.5 L</div>
+                    <div class="text-[10px] font-bold text-[#8E95A9] uppercase">Hydration <button onclick="addWater()" class="text-[#F26430] underline ml-1">+250ml</button></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-[#E4F8EC] flex items-center justify-center text-[#34B556] font-bold text-sm">⚡</div>
+                  <div>
+                    <div class="text-xs font-extrabold text-[#1E2235]">290 Kcal</div>
+                    <div class="text-[10px] font-bold text-[#8E95A9] uppercase">Today's Target</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl bg-[#EFEAFE] flex items-center justify-center text-[#7E57FF] font-bold text-sm">💤</div>
+                  <div>
+                    <div class="text-xs font-extrabold text-[#1E2235]">7h 45m</div>
+                    <div class="text-[10px] font-bold text-[#8E95A9] uppercase">Recovery Sleep</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom Scrollable Card: Daily Nutrition & Meal Plan (Scrollable Sub-menu) -->
+            <div class="bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex-1 min-h-0 flex flex-col">
+              <div class="flex items-center justify-between mb-3 shrink-0">
+                <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">TODAY'S NUTRITION & RECOVERY PLAN (SCROLLABLE)</span>
+                <span class="text-xs font-bold text-[#8E95A9]">1,640 / 2,100 Kcal</span>
+              </div>
+              <div class="custom-scroll flex-1 pr-2 space-y-3" id="mealPlanScrollList">
+                <!-- Populated by JS (7 detailed meals & supplements) -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (4 cols) -->
+          <div class="col-span-4 flex flex-col gap-6 h-full min-h-0">
+            <!-- Top Scrollable Card: 7-Day Program Roadmap -->
+            <div class="bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] h-[438px] shrink-0 flex flex-col">
+              <div class="flex items-center justify-between mb-4 shrink-0">
+                <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">WEEKLY SCHEDULE</span>
+                <span class="text-[11px] font-bold text-[#F26430]">7 Days Plan</span>
+              </div>
+              <div class="custom-scroll flex-1 pr-1.5 space-y-3" id="weeklyRoadmapList">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Bottom Card: Same Beginner Level & Friends Card for consistent anchor -->
+            <div class="bg-[#F3EAF9] rounded-[28px] p-6 flex-1 min-h-0 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-12 h-12 rounded-full bg-[#FDF3D7] flex items-center justify-center text-2xl shadow-sm">👶</div>
+                  <div>
+                    <div class="text-base font-extrabold tracking-wide text-[#1E2235]">BEGINNER</div>
+                    <div class="text-[10px] font-bold tracking-wider uppercase text-[#8E8AA0]">YOUR LEVEL</div>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#1E2235"><path d="M12 2a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V22l2-1.5L14 22V11.58c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
+                  <span class="text-sm font-extrabold text-[#1E2235] mt-1">1021</span>
+                </div>
+              </div>
+              <div>
+                <div class="text-[11px] font-extrabold tracking-wider uppercase text-[#1E2235] mb-2.5">DAILY GOAL STREAK</div>
+                <div class="w-full bg-white/70 h-3 rounded-full overflow-hidden p-0.5">
+                  <div class="bg-[#F26430] h-full rounded-full transition-all duration-500" style="width: 74%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-bold text-[#6E6A85] mt-1.5">
+                  <span>740 / 1000 XP to Intermediate</span>
+                  <span class="text-[#F26430]">+50 XP/workout</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================================
+           MENU 1: WORKOUT SESSION (DEFAULT ACTIVE - EXACT REPLICA OF REFERENCE IMAGE)
+           ========================================================================= -->
+      <section id="menu-1" class="menu-view active">
+        
+        <!-- Top Header: Day 1 - Day 4 Tabs (Exact Match to Reference) -->
+        <header class="flex items-center justify-between h-12 mb-5 shrink-0 px-1">
+          <div class="flex items-center gap-9" id="dayTabsContainer">
+            <!-- Day 1 (Active by default) -->
+            <button onclick="selectDay(1)" id="dayTab-1" class="day-tab flex items-center gap-2.5 text-[22px] font-extrabold text-[#1E2235] focus:outline-none">
+              <span class="day-dot w-2 h-2 rounded-full bg-[#1E2235] inline-block transition-transform duration-300"></span>
+              <span>Day 1</span>
+              <span class="day-emoji text-[21px] ml-0.5 inline-block transition-transform duration-300">👶</span>
+            </button>
+
+            <!-- Day 2 -->
+            <button onclick="selectDay(2)" id="dayTab-2" class="day-tab flex items-center gap-2 text-[22px] font-bold text-[#B0B5C6] focus:outline-none">
+              <span class="day-dot w-2 h-2 rounded-full bg-[#1E2235] hidden"></span>
+              <span>Day 2</span>
+              <span class="day-emoji text-[20px] ml-0.5 hidden">🔥</span>
+            </button>
+
+            <!-- Day 3 -->
+            <button onclick="selectDay(3)" id="dayTab-3" class="day-tab flex items-center gap-2 text-[22px] font-bold text-[#B0B5C6] focus:outline-none">
+              <span class="day-dot w-2 h-2 rounded-full bg-[#1E2235] hidden"></span>
+              <span>Day 3</span>
+              <span class="day-emoji text-[20px] ml-0.5 hidden">⚡</span>
+            </button>
+
+            <!-- Day 4 -->
+            <button onclick="selectDay(4)" id="dayTab-4" class="day-tab flex items-center gap-2 text-[22px] font-bold text-[#B0B5C6] focus:outline-none">
+              <span class="day-dot w-2 h-2 rounded-full bg-[#1E2235] hidden"></span>
+              <span>Day 4</span>
+              <span class="day-emoji text-[20px] ml-0.5 hidden">🏆</span>
+            </button>
+          </div>
+
+          <!-- Subtle Interactive Sound & Reset Controls -->
+          <div class="flex items-center gap-2.5">
+            <span id="liveWorkoutBadge" class="hidden items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0EB] text-[#F26430] text-xs font-extrabold animate-pulse">
+              <span class="w-2 h-2 rounded-full bg-[#F26430]"></span> SESSION LIVE
+            </span>
+            <button onclick="nextExercise()" class="px-3.5 py-1.5 rounded-xl bg-white text-[#1E2235] hover:bg-slate-100 text-xs font-bold shadow-sm border border-slate-100 transition flex items-center gap-1.5" title="Skip to Next Exercise">
+              <span>Next Exercise</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Main 2-Column Workout Grid (Fixed Height Distribution) -->
+        <div class="grid grid-cols-12 gap-7 flex-1 min-h-0">
+
+          <!-- ================= LEFT / CENTER COLUMN (63% / 8 cols) ================= -->
+          <div class="col-span-8 flex flex-col gap-6 h-full min-h-0">
+
+            <!-- TOP CARD: Visual Exercise Stage + 4 Workout Metric Pills (438px height) -->
+            <div class="bg-white rounded-[28px] shadow-[0_12px_34px_rgba(30,34,53,0.035)] h-[438px] shrink-0 flex flex-col overflow-hidden animate-stagger-1">
+              
+              <!-- Upper Visual Stage (346px height, rounded-[28px] on all 4 corners as in reference) -->
+              <div id="stageBackground" class="relative w-full h-[348px] rounded-[28px] overflow-hidden transition-colors duration-500 flex items-center justify-center" style="background: linear-gradient(135deg, #CBE0EC 0%, #DFEEF6 55%, #C6DCE8 100%);">
+                
+                <!-- Subtle Studio Floor Shadow & Ambient Reflection -->
+                <div class="absolute bottom-5 w-[68%] h-10 rounded-full bg-[#8FAEC2]/35 blur-md pointer-events-none"></div>
+
+                <!-- Dynamic Exercise Visual Artwork Container -->
+                <div id="stageVisualContainer" class="relative w-full h-full flex items-center justify-center pointer-events-none select-none transition-all duration-500">
+                  <!-- Populated dynamically with high-res studio illustration/photo of active exercise -->
+                </div>
+
+                <!-- Top-Left Overlay: Exercise Counter & Title -->
+                <div class="absolute top-7 left-8 z-20 pointer-events-none">
+                  <h2 id="stageCounterTitle" class="text-[20px] font-extrabold text-[#1E2235] tracking-tight leading-snug">Exercise 1/5</h2>
+                  <p id="stageSubtitle" class="text-[13px] font-medium text-[#6C788E] mt-0.5">Abdominal muscles</p>
+                </div>
+
+                <!-- Top-Right Overlay: Coral-Red Rounded Heart Button -->
+                <div class="absolute top-6 right-7 z-20">
+                  <button id="likeBtn" onclick="toggleFavoriteExercise(event)" class="w-11 h-11 rounded-[15px] bg-[#FF5660] text-white flex items-center justify-center shadow-[0_8px_20px_rgba(255,86,96,0.35)] hover:scale-105 active:scale-95 transition-transform focus:outline-none" aria-label="Favorite Exercise">
+                    <svg id="likeHeartSvg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Right-Center Overlay: Interactive Vertical Volume Pill Slider -->
+                <div class="absolute right-7 top-1/2 -translate-y-1/2 mt-3 w-9 h-[136px] rounded-full bg-white/75 backdrop-blur-md shadow-[0_8px_24px_rgba(30,34,53,0.06)] flex flex-col items-center justify-between py-3.5 z-20 select-none">
+                  <!-- Vertical Slider Track -->
+                  <div id="volumeTrack" class="relative w-1 h-[76px] rounded-full bg-[#DCE3EC] cursor-pointer flex justify-center" onmousedown="startVolumeDrag(event)" ontouchstart="startVolumeDrag(event)">
+                    <!-- Dark Filled Portion (Bottom up) -->
+                    <div id="volumeFill" class="absolute bottom-0 w-[2.5px] rounded-full bg-[#1E2235] transition-all duration-75" style="height: 62%;"></div>
+                    <!-- White Draggable Knob -->
+                    <div id="volumeKnob" class="absolute w-4 h-4 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] border border-slate-100 -left-[6px] transition-all duration-75 hover:scale-110" style="bottom: calc(62% - 8px);"></div>
+                  </div>
+
+                  <!-- Speaker Mute/Unmute Button -->
+                  <button onclick="toggleMute()" id="speakerBtn" class="text-[#1E2235] hover:text-[#F26430] transition-colors focus:outline-none pt-1" title="Toggle Audio">
+                    <svg id="speakerIconSvg" width="15" height="15" viewBox="0 0 24 24" fill="#1E2235">
+                      <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="#1E2235" stroke-width="2.2" stroke-linecap="round"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Bottom-Left Overlay: Large Circular Play/Pause Button with Orange Progress Arc -->
+                <div class="absolute bottom-5 left-7 z-20">
+                  <button onclick="toggleWorkoutTimer()" id="playPauseBtn" class="relative w-[74px] h-[74px] rounded-full flex items-center justify-center focus:outline-none group" aria-label="Play or Pause Workout">
+                    <!-- White Outer Base -->
+                    <div class="w-[66px] h-[66px] rounded-full bg-white shadow-[0_10px_25px_rgba(30,34,53,0.14)] flex items-center justify-center transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
+                      <!-- Pause Icon (Default visible as in reference image) -->
+                      <svg id="pauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="#1E2235">
+                        <rect x="6" y="5" width="4" height="14" rx="1.5"></rect>
+                        <rect x="14" y="5" width="4" height="14" rx="1.5"></rect>
+                      </svg>
+                      <!-- Play Icon -->
+                      <svg id="playIcon" class="hidden ml-0.5" width="20" height="20" viewBox="0 0 24 24" fill="#1E2235">
+                        <path d="M7 5.5v13l11-6.5-11-6.5z" stroke="#1E2235" stroke-width="1.5" stroke-linejoin="round"></path>
+                      </svg>
+                    </div>
+                    <!-- Orange SVG Circular Progress Ring around the Button -->
+                    <svg class="absolute inset-0 w-[74px] h-[74px] pointer-events-none" viewBox="0 0 74 74">
+                      <circle cx="37" cy="37" r="32" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="4.5"></circle>
+                      <circle id="stageProgressCircle" class="progress-ring-circle" cx="37" cy="37" r="32" fill="none" stroke="#F26430" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="115" style="transform: rotate(15deg); transform-origin: 50% 50%;"></circle>
+                    </svg>
+                  </button>
+                </div>
+
+              </div>
+
+              <!-- Lower Bar: 4 Workout Metric Pills (90px height, exact layout from reference) -->
+              <div class="flex-1 px-7 flex items-center justify-between bg-white">
+                
+                <!-- Metric 1: Stretching / EXCERCISE -->
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 rounded-[15px] bg-[#FFF4D4] flex items-center justify-center text-[#F2994A]">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="15" cy="4" r="2"></circle>
+                      <path d="M10.5 9.5L7 11.5l-2.5 4"></path>
+                      <path d="M14 9.5l3.5 3-2.5 4.5"></path>
+                      <path d="M8.5 15l4 2.5 2 4"></path>
+                      <path d="M5 19.5l3.5-4.5"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div id="metricType" class="text-[14px] font-extrabold text-[#1E2235] leading-tight">Stretching</div>
+                    <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#9AA1B4] mt-0.5">EXCERCISE</div>
+                  </div>
+                </div>
+
+                <!-- Metric 2: 2 / DIFFICULT -->
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 rounded-[15px] bg-[#EFEAFE] flex items-center justify-center">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B6BF2">
+                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="#8B6BF2" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div id="metricDiff" class="text-[14px] font-extrabold text-[#1E2235] leading-tight">2</div>
+                    <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#9AA1B4] mt-0.5">DIFFICULT</div>
+                  </div>
+                </div>
+
+                <!-- Metric 3: 45sec / TOTAL TIME -->
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 rounded-[15px] bg-[#E3F8EA] flex items-center justify-center">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#63D471">
+                      <circle cx="12" cy="12" r="9" fill="#63D471"/>
+                      <polyline points="12 7 12 12 15 14" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div id="metricTotalTime" class="text-[14px] font-extrabold text-[#1E2235] leading-tight">45sec</div>
+                    <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#9AA1B4] mt-0.5">TOTAL TIME</div>
+                  </div>
+                </div>
+
+                <!-- Metric 4: 30sec / REAL TIME -->
+                <div class="flex items-center gap-3.5">
+                  <div class="w-11 h-11 rounded-[15px] bg-[#FDE8F2] flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#D9468F">
+                      <path d="M6 2h12v4l-4 5 4 5v4H6v-4l4-5-4-5V2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div id="metricRealTime" class="text-[14px] font-extrabold text-[#1E2235] leading-tight tabular-nums">30sec</div>
+                    <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#9AA1B4] mt-0.5">REAL TIME</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- BOTTOM CARD: DESCRIPTION (Fixed Remaining Height + Smooth Internal Scroll) -->
+            <div class="bg-white rounded-[28px] pt-5 pb-4 pl-7 pr-4 shadow-[0_12px_34px_rgba(30,34,53,0.035)] flex-1 min-h-0 flex flex-col animate-stagger-2">
+              <div class="flex items-center justify-between pr-3 mb-3.5 shrink-0">
+                <h3 class="text-[11.5px] font-extrabold tracking-wider uppercase text-[#1E2235]">DESCRIPTION</h3>
+                <span class="text-[10.5px] font-semibold text-[#9AA1B4]">Scroll for all steps ↓</span>
+              </div>
+
+              <!-- Scrollable Timeline Steps Container -->
+              <div id="descriptionScrollContainer" class="custom-scroll flex-1 pr-3 space-y-4">
+                <!-- Populated dynamically when an exercise or Day is selected -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ================= RIGHT COLUMN (37% / 4 cols) ================= -->
+          <div class="col-span-4 flex flex-col gap-6 h-full min-h-0">
+
+            <!-- TOP RIGHT CARD: EXERCISES (Fixed Height 438px matching left stage card + Internal Scroll) -->
+            <div class="bg-white rounded-[28px] pt-6 pb-2 pl-5 pr-3.5 shadow-[0_12px_34px_rgba(30,34,53,0.035)] h-[438px] shrink-0 flex flex-col animate-stagger-3">
+              <div class="flex items-center justify-between px-2 mb-3.5 shrink-0">
+                <h3 class="text-[11.5px] font-extrabold tracking-wider uppercase text-[#1E2235]">EXERCISES</h3>
+                <span id="exercisesCountLabel" class="text-[11px] font-bold text-[#8E95A9]">7 movements</span>
+              </div>
+
+              <!-- Scrollable Exercise Items List (4 visible + 5th peeking at bottom just like reference!) -->
+              <div id="exercisesListContainer" class="custom-scroll flex-1 pr-2 space-y-2.5 pb-3">
+                <!-- Dynamically populated by JS -->
+              </div>
+            </div>
+
+            <!-- BOTTOM RIGHT CARD: BEGINNER & MY FRIENDS (Fixed Remaining Height) -->
+            <div class="bg-[#F3EAF9] rounded-[28px] px-6 py-5 shadow-[0_12px_34px_rgba(30,34,53,0.03)] flex-1 min-h-0 flex flex-col justify-between animate-stagger-4">
+              
+              <!-- Top Row: Beginner Badge & 1021 Score -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-12 h-12 rounded-full bg-[#FDF3D7] flex items-center justify-center text-[22px] shadow-sm">
+                    👶
+                  </div>
+                  <div>
+                    <div class="text-[16px] font-extrabold tracking-wide text-[#1E2235] leading-tight">BEGINNER</div>
+                    <div class="text-[9.5px] font-bold tracking-wider uppercase text-[#7E7B92] mt-0.5">YOUR LEVEL</div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col items-center">
+                  <!-- Ribbon / Medal Icon matching reference -->
+                  <svg width="16" height="17" viewBox="0 0 24 24" fill="#1E2235">
+                    <circle cx="12" cy="8" r="5.5" fill="#1E2235"/>
+                    <circle cx="12" cy="8" r="2" fill="#F3EAF9"/>
+                    <path d="M8.5 13L7 21L12 18.5L17 21L15.5 13" fill="#1E2235"/>
+                  </svg>
+                  <span id="userScoreCounter" class="text-[13.5px] font-extrabold text-[#1E2235] mt-1 tabular-nums">1021</span>
+                </div>
+              </div>
+
+              <!-- Bottom Row: MY FRIENDS + Overlapping Avatars + +10 + Orange Action Button -->
+              <div>
+                <div class="text-[10.5px] font-extrabold tracking-wider uppercase text-[#1E2235] mb-3">MY FRIENDS</div>
+                
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <!-- Overlapping Real Human Friend Portrait Avatars (4 colorful circles) -->
+                    <div class="flex -space-x-2.5">
+                      <!-- Friend 1: Cyan Rim -->
+                      <button onclick="openFriendsModal('Liam K.')" class="w-10 h-10 rounded-full bg-[#8CE0F5] p-0.5 ring-2 ring-[#F3EAF9] transition-transform hover:-translate-y-1 hover:z-20 focus:outline-none overflow-hidden" title="Liam K. • Online">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80" alt="Liam K." class="w-full h-full rounded-full object-cover" onerror="this.src='https://placehold.co/80x80/8CE0F5/1E2235?text=LK'" />
+                      </button>
+                      <!-- Friend 2: Lavender Rim -->
+                      <button onclick="openFriendsModal('Maya S.')" class="w-10 h-10 rounded-full bg-[#A892F8] p-0.5 ring-2 ring-[#F3EAF9] transition-transform hover:-translate-y-1 hover:z-20 focus:outline-none overflow-hidden" title="Maya S. • Working out">
+                        <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80" alt="Maya S." class="w-full h-full rounded-full object-cover" onerror="this.src='https://placehold.co/80x80/A892F8/1E2235?text=MS'" />
+                      </button>
+                      <!-- Friend 3: Coral Pink Rim -->
+                      <button onclick="openFriendsModal('Noah T.')" class="w-10 h-10 rounded-full bg-[#FF8DA1] p-0.5 ring-2 ring-[#F3EAF9] transition-transform hover:-translate-y-1 hover:z-20 focus:outline-none overflow-hidden" title="Noah T. • Completed Day 2">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80" alt="Noah T." class="w-full h-full rounded-full object-cover" onerror="this.src='https://placehold.co/80x80/FF8DA1/1E2235?text=NT'" />
+                      </button>
+                      <!-- Friend 4: Deep Purple Rim -->
+                      <button onclick="openFriendsModal('Chloe R.')" class="w-10 h-10 rounded-full bg-[#8D7BF6] p-0.5 ring-2 ring-[#F3EAF9] transition-transform hover:-translate-y-1 hover:z-20 focus:outline-none overflow-hidden" title="Chloe R. • 1,240 pts">
+                        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80" alt="Chloe R." class="w-full h-full rounded-full object-cover" onerror="this.src='https://placehold.co/80x80/8D7BF6/1E2235?text=CR'" />
+                      </button>
+                    </div>
+
+                    <!-- +10 White Pill Circle -->
+                    <button onclick="openFriendsModal()" class="ml-3 w-10 h-10 rounded-full bg-white text-[#1E2235] text-[11.5px] font-extrabold flex items-center justify-center shadow-sm hover:scale-105 transition-transform focus:outline-none">
+                      +10
+                    </button>
+                  </div>
+
+                  <!-- Orange Circular Action Button on Right -->
+                  <button onclick="openFriendsModal()" class="w-10 h-10 rounded-full bg-[#F26430] text-white flex items-center justify-center shadow-[0_6px_16px_rgba(242,100,48,0.38)] hover:scale-105 active:scale-95 transition-transform focus:outline-none" title="Send Workout Challenge">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 7h-3V5.5A2.5 2.5 0 0 0 13.5 3h-3A2.5 2.5 0 0 0 8 5.5V7H5a2 2 0 0 0-2 2v9a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2zm-9-1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V7h-4V5.5zm4 9.5h-4v-2h4v2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- =========================================================================
+           MENU 2: COMMUNITY & FRIENDS (Fixed Container + Scrollable Sub-panels)
+           ========================================================================= -->
+      <section id="menu-2" class="menu-view">
+        <header class="flex items-center justify-between h-12 mb-5 shrink-0 px-1">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#F26430]"></span>
+            <h1 class="text-[22px] font-extrabold tracking-tight text-[#1E2235]">Community & Friends</h1>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-[#EFEAFE] text-[#7E57FF]">14 Friends Active</span>
+          </div>
+          <button onclick="triggerCheerAll()" class="px-4 py-2 rounded-xl bg-[#F26430] text-white text-xs font-bold shadow-md hover:bg-[#e05522] transition">
+            👏 Send Group Cheer (+15 XP)
+          </button>
+        </header>
+
+        <div class="grid grid-cols-12 gap-7 flex-1 min-h-0">
+          <!-- Left Column: Scrollable Live Activity Feed & Challenges -->
+          <div class="col-span-7 bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex flex-col h-full min-h-0">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+              <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">LIVE FRIEND WORKOUT FEED (SCROLLABLE)</span>
+              <span class="text-xs font-bold text-[#63D471]">● Live Updates</span>
+            </div>
+            <div id="communityFeedList" class="custom-scroll flex-1 pr-2 space-y-3.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Right Column: Scrollable Friends Leaderboard -->
+          <div class="col-span-5 bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex flex-col h-full min-h-0">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+              <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">WEEKLY LEADERBOARD</span>
+              <span class="text-xs font-bold text-[#F26430]">Rank #4 of 14</span>
+            </div>
+            <div id="leaderboardScrollList" class="custom-scroll flex-1 pr-2 space-y-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================================
+           MENU 3: ANALYTICS & PROGRESS (Fixed Container + Scrollable Sub-panels)
+           ========================================================================= -->
+      <section id="menu-3" class="menu-view">
+        <header class="flex items-center justify-between h-12 mb-5 shrink-0 px-1">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#63D471]"></span>
+            <h1 class="text-[22px] font-extrabold tracking-tight text-[#1E2235]">Analytics & Body Progress</h1>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-bold text-[#8E95A9] bg-white px-3.5 py-2 rounded-xl shadow-sm">
+            <span>Current Level:</span>
+            <span class="text-[#1E2235] font-extrabold">Beginner • 1021 pts</span>
+          </div>
+        </header>
+
+        <div class="grid grid-cols-12 gap-7 flex-1 min-h-0">
+          <!-- Left Column: SVG Performance Curve + Scrollable Muscle Group Breakdown -->
+          <div class="col-span-7 flex flex-col gap-6 h-full min-h-0">
+            <!-- Top Performance Curve Card -->
+            <div class="bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] h-[270px] shrink-0 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-[11px] font-extrabold tracking-wider uppercase text-[#8E95A9]">METABOLIC OUTPUT TREND</span>
+                  <h3 class="text-lg font-extrabold text-[#1E2235]">Avg. Heart Rate 134 BPM • Peak 162 BPM</h3>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-[#E4F8EC] text-[#34B556] text-xs font-extrabold">Optimal Zone</span>
+              </div>
+              <!-- Smooth SVG Area Graph -->
+              <div class="w-full h-36 pt-2">
+                <svg viewBox="0 0 500 110" class="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#F26430" stop-opacity="0.32"/>
+                      <stop offset="100%" stop-color="#F26430" stop-opacity="0.0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,85 C60,80 90,35 150,45 C210,55 250,15 310,28 C370,40 420,10 500,18 L500,105 L0,105 Z" fill="url(#orangeGrad)"/>
+                  <path d="M0,85 C60,80 90,35 150,45 C210,55 250,15 310,28 C370,40 420,10 500,18" fill="none" stroke="#F26430" stroke-width="3.5" stroke-linecap="round"/>
+                  <circle cx="150" cy="45" r="5" fill="#FFFFFF" stroke="#F26430" stroke-width="3"/>
+                  <circle cx="310" cy="28" r="5" fill="#FFFFFF" stroke="#F26430" stroke-width="3"/>
+                  <circle cx="500" cy="18" r="6" fill="#F26430" stroke="#FFFFFF" stroke-width="2.5"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Scrollable Muscle Group Focus & Personal Records -->
+            <div class="bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex-1 min-h-0 flex flex-col">
+              <div class="flex items-center justify-between mb-3.5 shrink-0">
+                <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">MUSCLE ENGAGEMENT & PERSONAL RECORDS (SCROLLABLE)</span>
+                <span class="text-xs font-bold text-[#8E95A9]">8 Zones</span>
+              </div>
+              <div id="muscleAnalyticsList" class="custom-scroll flex-1 pr-2 space-y-3">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Scrollable Workout Session Log -->
+          <div class="col-span-5 bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex flex-col h-full min-h-0">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+              <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">COMPLETED WORKOUT LOG</span>
+              <span class="text-xs font-bold text-[#63D471]">12 Sessions</span>
+            </div>
+            <div id="workoutHistoryLog" class="custom-scroll flex-1 pr-2 space-y-3">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================================
+           MENU 4: COACH CHAT & PROFILE SETTINGS (Fixed Container + Scrollable)
+           ========================================================================= -->
+      <section id="menu-4" class="menu-view">
+        <header class="flex items-center justify-between h-12 mb-5 shrink-0 px-1">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#8B6BF2]"></span>
+            <h1 class="text-[22px] font-extrabold tracking-tight text-[#1E2235]">Personal Trainer & Workout Preferences</h1>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-[#E3F8EA] text-[#2EB84A]">● Coach Elena Online</span>
+        </header>
+
+        <div class="grid grid-cols-12 gap-7 flex-1 min-h-0">
+          <!-- Left Column: Interactive Coach Chat with Scrollable Messages -->
+          <div class="col-span-7 bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex flex-col h-full min-h-0">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
+              <div class="flex items-center gap-3">
+                <img 
+                  src="https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=crop&w=180&q=80" 
+                  alt="Coach Elena" 
+                  class="w-11 h-11 rounded-full object-cover ring-2 ring-[#EDE7FF] shadow-sm"
+                  onerror="this.src='https://placehold.co/90x90/EDE7FF/1E2235?text=CE'"
+                />
+                <div>
+                  <div class="text-sm font-extrabold text-[#1E2235]">Coach Elena • Certified Core & Mobility Specialist</div>
+                  <div class="text-[11px] font-medium text-[#8E95A9]">Ask anything about posture, breathing, or reps</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scrollable Chat Messages -->
+            <div id="coachChatMessages" class="custom-scroll flex-1 py-4 pr-2 space-y-3.5">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Chat Input Form -->
+            <form onsubmit="sendCoachMessage(event)" class="pt-3 border-t border-slate-100 flex gap-2.5 shrink-0">
+              <input id="coachChatInput" type="text" placeholder="Ask Coach Elena about Abdominal muscles or Day 1..." class="flex-1 bg-[#F4F6FB] rounded-xl px-4 py-2.5 text-xs font-semibold text-[#1E2235] focus:outline-none focus:ring-2 focus:ring-[#F26430]/40" />
+              <button type="submit" class="px-4 py-2.5 rounded-xl bg-[#F26430] text-white text-xs font-bold hover:bg-[#e05522] transition shrink-0">Send</button>
+            </form>
+          </div>
+
+          <!-- Right Column: Scrollable Settings & Achievements -->
+          <div class="col-span-5 bg-white rounded-[28px] p-6 shadow-[0_10px_30px_rgba(30,34,53,0.03)] flex flex-col h-full min-h-0">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+              <span class="text-xs font-extrabold tracking-wider uppercase text-[#1E2235]">PREFERENCES & ACHIEVEMENTS</span>
+              <span class="text-xs font-bold text-[#F26430]">Saved</span>
+            </div>
+            <div id="settingsScrollList" class="custom-scroll flex-1 pr-2 space-y-4">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ==================== FRIENDS QUICK-CHALLENGE MODAL OVERLAY ==================== -->
+    <div id="friendsModal" class="absolute inset-0 bg-[#1E2235]/35 backdrop-blur-sm z-50 hidden items-center justify-center p-6 opacity-0 transition-opacity duration-300">
+      <div class="bg-white rounded-[28px] w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[520px]" id="friendsModalCard">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-[#FFF0EB] text-[#F26430] flex items-center justify-center font-bold">🏆</span>
+            <div>
+              <h3 class="text-base font-extrabold text-[#1E2235]">My Friends & Quick Challenge</h3>
+              <p class="text-[11px] font-medium text-[#8E95A9]">14 Friends in Beginner League</p>
+            </div>
+          </div>
+          <button onclick="closeFriendsModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center font-bold text-sm">✕</button>
+        </div>
+
+        <div id="modalFriendsScroll" class="custom-scroll flex-1 my-3 pr-1.5 space-y-2.5">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+          <button onclick="closeFriendsModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-xs font-bold text-[#1E2235]">Close</button>
+          <button onclick="switchMenu(2); closeFriendsModal();" class="px-4 py-2 rounded-xl bg-[#F26430] text-white text-xs font-bold shadow-md">Open Full Community Hub</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== FLOATING TOAST NOTIFICATION ==================== -->
+    <div id="toastBanner" class="
+      pointer-events-none fixed bottom-7 left-1/2 -translate-x-1/2 z-50
+      bg-[#1E2235] text-white px-4 py-2.5 rounded-2xl shadow-xl
+      text-xs font-bold flex items-center gap-2.5
+      opacity-0 translate-y-3 transition-all duration-300
+    ">
+      <span id="toastIcon" class="w-2 h-2 rounded-full bg-[#63D471]"></span>
+      <span id="toastMessage">Workout updated</span>
+    </div>
+
+  </div>
+
+  <!-- ==================== APPLICATION LOGIC & DATA ==================== -->
+  <script>
+    /*************************************************************************
+     * 1. COMPLETE WORKOUT DATASET WITH REAL HUMAN PHOTOGRAPHY (DAYS 1 - 4)
+     *    Every exercise includes high-resolution real human fitness photos.
+     *************************************************************************/
+    const WORKOUT_DAYS = {
+      1: {
+        dayName: "Day 1",
+        badge: "👶",
+        headerTotalCount: 5, // Displays "Exercise 1/5" on initial load to match screenshot
+        exercises: [
+          {
+            id: "d1-e1",
+            title: "Abdominal muscles",
+            durationMins: "10 mins",
+            kcal: "40Kcal",
+            category: "Stretching",
+            difficulty: "2",
+            totalTimeSec: 45,
+            realTimeSec: 30,
+            status: "progress", // orange partial ring
+            progressPercent: 62,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #CBE0EC 0%, #DFEEF6 55%, #C6DCE8 100%)",
+            thumbBg: "#D5E5EF",
+            photoUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=300&q=80",
+            bpm: "128 BPM",
+            cadence: "15 Reps • Core Hold",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Begin in a kneeling position, hands-on thighs and toes curled underneath the buttocks.",
+                subHeading: "Actions",
+                subText: "Move forward on the knees bringing the forearms to the floor, hands close together. Lift the legs and take the stability ball firmly between your hands while engaging your deep transverse abdominal wall."
+              },
+              {
+                stepNum: 2,
+                heading: "Core Compression & Balance:",
+                text: "Lean back to a 45-degree seated V-sit angle with one knee bent and one leg extended gracefully over the mat.",
+                subHeading: "Breathing Cues",
+                subText: "Exhale steadily through pursed lips as you rotate your torso toward the stability ball. Keep your shoulders relaxed and away from your ears."
+              },
+              {
+                stepNum: 3,
+                heading: "Isometric Hold & Release:",
+                text: "Hold the peak contraction for 3 seconds while maintaining neutral cervical spine alignment, then slowly return to center.",
+                subHeading: "Pro Form Tip",
+                subText: "Avoid pulling with your hip flexors—focus 100% of the tension into your upper and lower abdominal muscles."
+              },
+              {
+                stepNum: 4,
+                heading: "Repetition Tempo:",
+                text: "Complete 15 controlled repetitions per side with a 2-second eccentric lowering phase to maximize core fiber recruitment.",
+                subHeading: "Safety Note",
+                subText: "Keep your lower back lightly imprinted or neutral; stop immediately if you feel lumbar strain."
+              }
+            ]
+          },
+          {
+            id: "d1-e2",
+            title: "Jumping on ball",
+            durationMins: "15 mins",
+            kcal: "90Kcal",
+            category: "Cardio Core",
+            difficulty: "3",
+            totalTimeSec: 60,
+            realTimeSec: 45,
+            status: "done", // green check circle
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #CFC2F2 0%, #E3DCFA 55%, #C5B4EE 100%)",
+            thumbBg: "#9E82D8",
+            photoUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=300&q=80",
+            bpm: "144 BPM",
+            cadence: "Dynamic Bounce",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Sit tall right at the apex of the stability ball with your feet hip-width apart and knees bent at 90 degrees.",
+                subHeading: "Actions",
+                subText: "Engage your pelvic floor and abdominal wall, then initiate rhythmic vertical bounces while keeping your spine tall and shoulders stacked."
+              },
+              {
+                stepNum: 2,
+                heading: "Dynamic Arm Drive:",
+                text: "Coordinate opposite arm swings or reach both hands forward for counterbalance as your bounce cadence increases.",
+                subHeading: "Breathing Cues",
+                subText: "Inhale for two bounces and exhale for two bounces to sustain aerobic rhythm without losing core bracing."
+              },
+              {
+                stepNum: 3,
+                heading: "Stabilization Landing:",
+                text: "Absorb every rebound softly through your hips and core rather than letting your spine compress.",
+                subHeading: "Target Muscles",
+                subText: "Quads, glute medius, erector spinae, and deep abdominal stabilizers."
+              }
+            ]
+          },
+          {
+            id: "d1-e3",
+            title: "With dumbbells",
+            durationMins: "10 mins",
+            kcal: "50Kcal",
+            category: "Strength",
+            difficulty: "2",
+            totalTimeSec: 50,
+            realTimeSec: 35,
+            status: "done", // green check circle
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #B2DCEB 0%, #D4EFF8 55%, #9ACCE0 100%)",
+            thumbBg: "#76B5CD",
+            photoUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&q=80",
+            bpm: "132 BPM",
+            cadence: "12 Reps • Sculpt",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Stand with feet shoulder-width apart holding a pair of light ergonomic dumbbells at chest height with neutral wrists.",
+                subHeading: "Actions",
+                subText: "Press the dumbbells overhead in a smooth arc while simultaneously bracing your ribcage down to prevent lower-back arching."
+              },
+              {
+                stepNum: 2,
+                heading: "Eccentric Control:",
+                text: "Lower the weights over 3 full seconds back to shoulder level, feeling constant tension across your deltoids and upper torso.",
+                subHeading: "Form Check",
+                subText: "Keep knees softly unlocked and weight evenly distributed across your mid-foot and heels."
+              },
+              {
+                stepNum: 3,
+                heading: "Finisher Pulse:",
+                text: "On the final 10 seconds, perform controlled micro-pulses at 90 degrees to maximize muscular endurance.",
+                subHeading: "Recovery",
+                subText: "Shake out your arms and roll your shoulders backward between sets."
+              }
+            ]
+          },
+          {
+            id: "d1-e4",
+            title: "Jumping",
+            durationMins: "10 mins",
+            kcal: "110Kcal",
+            category: "Plyometric",
+            difficulty: "4",
+            totalTimeSec: 45,
+            realTimeSec: 25,
+            status: "skipped", // coral-red x circle matching reference
+            progressPercent: 30,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #FAD0DA 0%, #FDE6EC 55%, #F7BECB 100%)",
+            thumbBg: "#FCA3B5",
+            photoUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=300&q=80",
+            bpm: "158 BPM",
+            cadence: "Explosive Plyo",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Begin in an athletic quarter-squat stance with knees tracking over toes and arms loaded slightly behind your hips.",
+                subHeading: "Actions",
+                subText: "Explode upward driving your knees toward your chest while extending your arms overhead for maximum vertical lift."
+              },
+              {
+                stepNum: 2,
+                heading: "Whisper-Quiet Landing:",
+                text: "Land toe-to-heel with soft, bent knees to absorb impact forces smoothly and immediately load into the next jump.",
+                subHeading: "Pacing",
+                subText: "Maintain a crisp, bouncy rhythm for the full 45-second interval."
+              },
+              {
+                stepNum: 3,
+                heading: "Low-Impact Modification:",
+                text: "If needed, substitute with rapid alternating high-knee marches while keeping your heart rate elevated.",
+                subHeading: "Safety",
+                subText: "Never land with locked knees."
+              }
+            ]
+          },
+          {
+            id: "d1-e5",
+            title: "Plank Core Hold",
+            durationMins: "12 mins",
+            kcal: "65Kcal",
+            category: "Isometric",
+            difficulty: "3",
+            totalTimeSec: 60,
+            realTimeSec: 40,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #D3EFE0 0%, #EAF8F0 55%, #C3E7D4 100%)",
+            thumbBg: "#DFEFE4",
+            photoUrl: "https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=300&q=80",
+            bpm: "136 BPM",
+            cadence: "60s Isometric Hold",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Place forearms parallel on the mat directly underneath your shoulders with toes tucked firmly.",
+                subHeading: "Actions",
+                subText: "Lift your knees to form a straight line from crown to heels. Squeeze glutes and quads simultaneously."
+              },
+              {
+                stepNum: 2,
+                heading: "Scapular Protraction:",
+                text: "Press the floor away actively with your forearms so your shoulder blades stay flat and wide.",
+                subHeading: "Breathing",
+                subText: "Take slow 4-second nasal inhales and forceful 4-second mouth exhales."
+              }
+            ]
+          },
+          {
+            id: "d1-e6",
+            title: "Swiss Ball Pike",
+            durationMins: "15 mins",
+            kcal: "85Kcal",
+            category: "Core Flow",
+            difficulty: "4",
+            totalTimeSec: 50,
+            realTimeSec: 30,
+            status: "progress",
+            progressPercent: 45,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #FDE8C9 0%, #FFF5E4 55%, #F8DCAD 100%)",
+            thumbBg: "#F7DFBA",
+            photoUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=300&q=80",
+            bpm: "140 BPM",
+            cadence: "10 Controlled Pikes",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Assume a high push-up position with your shins resting securely on top of the stability ball.",
+                subHeading: "Actions",
+                subText: "Draw your hips upward toward the ceiling by contracting your lower abdominals, rolling the ball forward toward your hands."
+              },
+              {
+                stepNum: 2,
+                heading: "Controlled Extension:",
+                text: "Pause for 1 second at the top of the pike, then unroll slowly back to a flat plank without letting your hips sag.",
+                subHeading: "Focus",
+                subText: "Keep weight stacked over your palms throughout the movement."
+              }
+            ]
+          },
+          {
+            id: "d1-e7",
+            title: "Cooldown Spine Stretch",
+            durationMins: "8 mins",
+            kcal: "30Kcal",
+            category: "Mobility",
+            difficulty: "1",
+            totalTimeSec: 60,
+            realTimeSec: 60,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #DCE2F9 0%, #EEF1FD 55%, #CCD5F5 100%)",
+            thumbBg: "#D8E0F8",
+            photoUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=300&q=80",
+            bpm: "98 BPM",
+            cadence: "Deep Recovery Stretch",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Kneel on the soft mat and sit your hips back onto your heels in an extended Child's Pose.",
+                subHeading: "Actions",
+                subText: "Walk your fingertips forward across the floor while letting your chest melt gently toward the mat."
+              },
+              {
+                stepNum: 2,
+                heading: "Thoracic Decompression:",
+                text: "Walk both hands 30 degrees to the left to lengthen your right lat and intercostal muscles, hold 20 seconds, then switch sides.",
+                subHeading: "Completion",
+                subText: "Finish with three deep recovery breaths."
+              }
+            ]
+          }
+        ]
+      },
+
+      2: {
+        dayName: "Day 2",
+        badge: "🔥",
+        headerTotalCount: 6,
+        exercises: [
+          {
+            id: "d2-e1",
+            title: "HIIT Kettlebell Swing",
+            durationMins: "12 mins",
+            kcal: "115Kcal",
+            category: "HIIT Power",
+            difficulty: "3",
+            totalTimeSec: 60,
+            realTimeSec: 40,
+            status: "progress",
+            progressPercent: 70,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #FAD0DA 0%, #FDE6EC 55%, #F7BECB 100%)",
+            thumbBg: "#FCA3B5",
+            photoUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80",
+            bpm: "152 BPM",
+            cadence: "20 Power Swings",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Stand with feet slightly wider than shoulder-width, gripping the weight bell with both hands in front of your hips.",
+                subHeading: "Actions",
+                subText: "Hinge sharply at the hips keeping your shins vertical, then snap your hips forward to float the weight to chest height."
+              },
+              {
+                stepNum: 2,
+                heading: "Posterior Chain Drive:",
+                text: "Remember that the swing is a horizontal hip hinge—never lift with your shoulders or squat the movement.",
+                subHeading: "Breathing",
+                subText: "Sharp nasal inhale on the backswing, explosive exhale at the top lock-out."
+              }
+            ]
+          },
+          {
+            id: "d2-e2",
+            title: "Stability Ball Hamstring Curl",
+            durationMins: "10 mins",
+            kcal: "65Kcal",
+            category: "Lower Body",
+            difficulty: "3",
+            totalTimeSec: 45,
+            realTimeSec: 30,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #CBE0EC 0%, #DFEEF6 55%, #C6DCE8 100%)",
+            thumbBg: "#D5E5EF",
+            photoUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80",
+            bpm: "130 BPM",
+            cadence: "15 Glute Curls",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Lie supine on the floor with your heels and lower calves resting atop the stability ball.",
+                subHeading: "Actions",
+                subText: "Bridge your hips up and curl the ball inward toward your glutes using your hamstrings."
+              },
+              {
+                stepNum: 2,
+                heading: "Hip Extension Lock:",
+                text: "Keep your hips elevated throughout the curl and extension phase for maximum glute-hamstring synergy.",
+                subHeading: "Tempo",
+                subText: "2 seconds in, 1 second squeeze, 3 seconds out."
+              }
+            ]
+          },
+          {
+            id: "d2-e3",
+            title: "Explosive Tuck Jumps",
+            durationMins: "10 mins",
+            kcal: "120Kcal",
+            category: "Plyometric",
+            difficulty: "4",
+            totalTimeSec: 40,
+            realTimeSec: 20,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #CFC2F2 0%, #E3DCFA 55%, #C5B4EE 100%)",
+            thumbBg: "#9E82D8",
+            photoUrl: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?auto=format&fit=crop&w=300&q=80",
+            bpm: "162 BPM",
+            cadence: "High-Output Plyo",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Stand tall with feet hip-width apart and core braced.",
+                subHeading: "Actions",
+                subText: "Dip into a quick quarter-squat and jump vertically, tucking knees toward chest height before landing softly."
+              }
+            ]
+          },
+          {
+            id: "d2-e4",
+            title: "Renegade Dumbbell Row",
+            durationMins: "14 mins",
+            kcal: "85Kcal",
+            category: "Upper & Core",
+            difficulty: "3",
+            totalTimeSec: 50,
+            realTimeSec: 35,
+            status: "progress",
+            progressPercent: 40,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #B2DCEB 0%, #D4EFF8 55%, #9ACCE0 100%)",
+            thumbBg: "#76B5CD",
+            photoUrl: "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=300&q=80",
+            bpm: "139 BPM",
+            cadence: "16 Alternating Rows",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Hold a high plank with hands gripping hex dumbbells on the floor and feet wide for anti-rotation stability.",
+                subHeading: "Actions",
+                subText: "Row one dumbbell toward your hip while keeping both hips square to the mat."
+              }
+            ]
+          },
+          {
+            id: "d2-e5",
+            title: "Medicine Ball Slam",
+            durationMins: "10 mins",
+            kcal: "95Kcal",
+            category: "Power Cardio",
+            difficulty: "3",
+            totalTimeSec: 45,
+            realTimeSec: 45,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #D3EFE0 0%, #EAF8F0 55%, #C3E7D4 100%)",
+            thumbBg: "#DFEFE4",
+            photoUrl: "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?auto=format&fit=crop&w=300&q=80",
+            bpm: "155 BPM",
+            cadence: "Explosive Core Slam",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Reach the ball fully overhead into triple extension onto your toes.",
+                subHeading: "Actions",
+                subText: "Engage your lats and abs to slam the ball forcefully in front of your feet, catching it on the bounce."
+              }
+            ]
+          },
+          {
+            id: "d2-e6",
+            title: "Active Hip Opener Flow",
+            durationMins: "8 mins",
+            kcal: "35Kcal",
+            category: "Mobility",
+            difficulty: "1",
+            totalTimeSec: 60,
+            realTimeSec: 50,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #FDE8C9 0%, #FFF5E4 55%, #F8DCAD 100%)",
+            thumbBg: "#F7DFBA",
+            photoUrl: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=300&q=80",
+            bpm: "104 BPM",
+            cadence: "Deep Mobility Flow",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Step your right foot outside your right hand in a long runner's lunge.",
+                subHeading: "Actions",
+                subText: "Rotate your right arm toward the ceiling while exhaling deeply to mobilize your thoracic spine."
+              }
+            ]
+          }
+        ]
+      },
+
+      3: {
+        dayName: "Day 3",
+        badge: "⚡",
+        headerTotalCount: 5,
+        exercises: [
+          {
+            id: "d3-e1",
+            title: "Dumbbell Thruster Press",
+            durationMins: "15 mins",
+            kcal: "105Kcal",
+            category: "Full Body",
+            difficulty: "3",
+            totalTimeSec: 55,
+            realTimeSec: 38,
+            status: "progress",
+            progressPercent: 68,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #B2DCEB 0%, #D4EFF8 55%, #9ACCE0 100%)",
+            thumbBg: "#76B5CD",
+            photoUrl: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80",
+            bpm: "148 BPM",
+            cadence: "15 Full Thrusters",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Hold dumbbells in a front-rack position at shoulder height with elbows pointing slightly forward.",
+                subHeading: "Actions",
+                subText: "Descend into a deep squat, then drive forcefully through your heels to press the weights overhead in one fluid motion."
+              },
+              {
+                stepNum: 2,
+                heading: "Core Transfer:",
+                text: "Use the upward momentum from your legs to transfer energy directly into the overhead lockout.",
+                subHeading: "Breathing",
+                subText: "Inhale on the squat descent, exhale powerfully as the dumbbells lock overhead."
+              }
+            ]
+          },
+          {
+            id: "d3-e2",
+            title: "Swiss Ball Balance Squat",
+            durationMins: "12 mins",
+            kcal: "75Kcal",
+            category: "Stability",
+            difficulty: "2",
+            totalTimeSec: 45,
+            realTimeSec: 30,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #CFC2F2 0%, #E3DCFA 55%, #C5B4EE 100%)",
+            thumbBg: "#9E82D8",
+            photoUrl: "https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=300&q=80",
+            bpm: "134 BPM",
+            cadence: "Controlled Squat",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Hold the stability ball extended in front of your chest as a counterbalance.",
+                subHeading: "Actions",
+                subText: "Lower into a parallel squat while keeping your chest proud and knees aligned with your second toe."
+              }
+            ]
+          },
+          {
+            id: "d3-e3",
+            title: "Lateral Skater Bounds",
+            durationMins: "10 mins",
+            kcal: "100Kcal",
+            category: "Agility",
+            difficulty: "3",
+            totalTimeSec: 45,
+            realTimeSec: 28,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #FAD0DA 0%, #FDE6EC 55%, #F7BECB 100%)",
+            thumbBg: "#FCA3B5",
+            photoUrl: "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=300&q=80",
+            bpm: "154 BPM",
+            cadence: "Lateral Agility",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Load weight onto your right leg at the edge of your mat.",
+                subHeading: "Actions",
+                subText: "Bound laterally to land softly on your left foot, sweeping your trailing leg behind for balance."
+              }
+            ]
+          },
+          {
+            id: "d3-e4",
+            title: "V-Sit Ball Pass",
+            durationMins: "10 mins",
+            kcal: "60Kcal",
+            category: "Abdominals",
+            difficulty: "3",
+            totalTimeSec: 50,
+            realTimeSec: 35,
+            status: "skipped",
+            progressPercent: 25,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #CBE0EC 0%, #DFEEF6 55%, #C6DCE8 100%)",
+            thumbBg: "#D5E5EF",
+            photoUrl: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=300&q=80",
+            bpm: "131 BPM",
+            cadence: "Core Transfer",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Lie flat on your back holding the stability ball overhead with legs extended.",
+                subHeading: "Actions",
+                subText: "Fold upward into a V-sit, transferring the ball from your hands to between your ankles, then lower with control."
+              }
+            ]
+          },
+          {
+            id: "d3-e5",
+            title: "Supine Spinal Twist",
+            durationMins: "8 mins",
+            kcal: "25Kcal",
+            category: "Recovery",
+            difficulty: "1",
+            totalTimeSec: 60,
+            realTimeSec: 60,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #D3EFE0 0%, #EAF8F0 55%, #C3E7D4 100%)",
+            thumbBg: "#DFEFE4",
+            photoUrl: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=300&q=80",
+            bpm: "96 BPM",
+            cadence: "Restorative Stretch",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Lie on your back with arms in a T-shape and knees bent at 90 degrees.",
+                subHeading: "Actions",
+                subText: "Let both knees gently fall to one side while gazing over the opposite shoulder."
+              }
+            ]
+          }
+        ]
+      },
+
+      4: {
+        dayName: "Day 4",
+        badge: "🏆",
+        headerTotalCount: 5,
+        exercises: [
+          {
+            id: "d4-e1",
+            title: "Dynamic Core Flow",
+            durationMins: "15 mins",
+            kcal: "85Kcal",
+            category: "Core Mastery",
+            difficulty: "3",
+            totalTimeSec: 60,
+            realTimeSec: 45,
+            status: "progress",
+            progressPercent: 80,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #CBE0EC 0%, #DFEEF6 55%, #C6DCE8 100%)",
+            thumbBg: "#D5E5EF",
+            photoUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=300&q=80",
+            bpm: "138 BPM",
+            cadence: "Russian Twist Flow",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Begin seated on the mat with the stability ball held lightly at your sternum.",
+                subHeading: "Actions",
+                subText: "Flow smoothly from a Russian twist into an extended single-leg reach, maintaining continuous core tension."
+              },
+              {
+                stepNum: 2,
+                heading: "Mind-Muscle Connection:",
+                text: "Move deliberately without momentum—every inch of rotation originates from your obliques.",
+                subHeading: "Breathing",
+                subText: "Deep rhythmic diaphragmatic breathing throughout the 60-second finisher."
+              }
+            ]
+          },
+          {
+            id: "d4-e2",
+            title: "Plyo Star Jumps",
+            durationMins: "10 mins",
+            kcal: "115Kcal",
+            category: "Cardio Peak",
+            difficulty: "4",
+            totalTimeSec: 45,
+            realTimeSec: 30,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #FAD0DA 0%, #FDE6EC 55%, #F7BECB 100%)",
+            thumbBg: "#FCA3B5",
+            photoUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=300&q=80",
+            bpm: "160 BPM",
+            cadence: "Peak Cardio Burst",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Start in a compact crouch with fingertips brushing the sides of your calves.",
+                subHeading: "Actions",
+                subText: "Explode upward extending arms and legs out into a full mid-air star before landing softly."
+              }
+            ]
+          },
+          {
+            id: "d4-e3",
+            title: "Dumbbell Arnold Press",
+            durationMins: "12 mins",
+            kcal: "65Kcal",
+            category: "Shoulders",
+            difficulty: "2",
+            totalTimeSec: 50,
+            realTimeSec: 35,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #B2DCEB 0%, #D4EFF8 55%, #9ACCE0 100%)",
+            thumbBg: "#76B5CD",
+            photoUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&q=80",
+            bpm: "135 BPM",
+            cadence: "12 Rotational Presses",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Hold dumbbells at chin level with palms facing toward you.",
+                subHeading: "Actions",
+                subText: "Rotate palms outward 180 degrees as you press overhead to recruit all three deltoid heads."
+              }
+            ]
+          },
+          {
+            id: "d4-e4",
+            title: "Ball Wall Squat Hold",
+            durationMins: "10 mins",
+            kcal: "70Kcal",
+            category: "Endurance",
+            difficulty: "2",
+            totalTimeSec: 60,
+            realTimeSec: 40,
+            status: "done",
+            progressPercent: 100,
+            liked: false,
+            stageBg: "linear-gradient(135deg, #CFC2F2 0%, #E3DCFA 55%, #C5B4EE 100%)",
+            thumbBg: "#9E82D8",
+            photoUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=300&q=80",
+            bpm: "132 BPM",
+            cadence: "Isometric Wall Squat",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Pin the stability ball against the wall with your lower back and walk feet forward.",
+                subHeading: "Actions",
+                subText: "Roll down until thighs are parallel to the floor and hold steady."
+              }
+            ]
+          },
+          {
+            id: "d4-e5",
+            title: "Full Body Savasana Breath",
+            durationMins: "10 mins",
+            kcal: "20Kcal",
+            category: "Mindfulness",
+            difficulty: "1",
+            totalTimeSec: 60,
+            realTimeSec: 60,
+            status: "done",
+            progressPercent: 100,
+            liked: true,
+            stageBg: "linear-gradient(135deg, #D3EFE0 0%, #EAF8F0 55%, #C3E7D4 100%)",
+            thumbBg: "#DFEFE4",
+            photoUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=85",
+            thumbUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=300&q=80",
+            bpm: "92 BPM",
+            cadence: "Mindful Recovery",
+            steps: [
+              {
+                stepNum: 1,
+                heading: "Start point:",
+                text: "Rest comfortably on the mat with calves elevated on the stability ball.",
+                subHeading: "Actions",
+                subText: "Close your eyes and celebrate completing your 4-day Beginner Milestone!"
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    /*************************************************************************
+     * 2. REAL HUMAN PHOTOGRAPHY RENDERERS FOR STAGE & THUMBNAILS
+     *************************************************************************/
+    function getStageArtworkHTML(exercise, isPlaying) {
+      const motionClass = isPlaying ? "stage-photo-playing" : "";
+      const liveHudHTML = isPlaying ? `
+        <div class="absolute bottom-6 right-16 z-20 flex items-center gap-2.5 bg-white/85 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-white/60 animate-bounce">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#F26430] animate-ping"></span>
+          <div class="text-left">
+            <div class="text-[11px] font-extrabold text-[#1E2235] leading-none">${exercise.cadence || 'Active Set'}</div>
+            <div class="text-[9.5px] font-bold text-[#F26430] mt-0.5">❤️ ${exercise.bpm || '134 BPM'} • ${exercise.kcal}</div>
+          </div>
+        </div>
+      ` : "";
+
+      return `
+        <div class="relative w-full h-full overflow-hidden flex items-center justify-center">
+          <!-- High-Resolution Real Human Fitness Photograph -->
+          <img 
+            src="${exercise.photoUrl}" 
+            alt="${exercise.title}" 
+            class="w-full h-full object-cover object-center transition-transform duration-700 ${motionClass}"
+            onerror="this.src='https://placehold.co/900x500/CBE0EC/1E2235?text=${encodeURIComponent(exercise.title)}'"
+          />
+          <!-- Soft Studio Atmosphere Overlay so top-left text & controls pop exactly like the reference -->
+          <div class="absolute inset-0 bg-gradient-to-r from-[#DFEEF6]/75 via-[#DFEEF6]/20 to-transparent pointer-events-none"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-[#1E2235]/15 via-transparent to-[#FFFFFF]/25 pointer-events-none"></div>
+          ${liveHudHTML}
+        </div>
+      `;
+    }
+
+    // Real Human Workout Thumbnail Generator for the Right Column `EXERCISES` Cards
+    function getMiniThumbnailHTML(exercise) {
+      return `
+        <div class="relative w-full h-full overflow-hidden" style="background:${exercise.thumbBg}">
+          <img 
+            src="${exercise.thumbUrl}" 
+            alt="${exercise.title}" 
+            class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
+            onerror="this.src='https://placehold.co/150x110/D5E5EF/1E2235?text=Fit'"
+          />
+          <div class="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent pointer-events-none"></div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 3. STATE MANAGEMENT & AUDIO SYNTHESIS (WEB AUDIO API)
+     *************************************************************************/
+    let currentMenuIndex = 1; // Default Menu 1 = Workout Session (matches reference)
+    let currentDay = 1;
+    let currentExerciseIndex = 0;
+    let isTimerRunning = false;
+    let timerInterval = null;
+    let remainingRealTime = 30;
+    let totalExerciseTime = 45;
+    let audioVolume = 0.62;
+    let isMuted = false;
+    let userScore = 1021;
+    let hydrationLiters = 1.8;
+
+    // Web Audio API Synthesizer for subtle UI clicks, timer ticks & completion chimes
+    let audioCtx = null;
+    function playUISound(type = "click") {
+      if (isMuted || audioVolume <= 0.02) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        const vol = Math.min(0.25, audioVolume * 0.22);
+
+        if (type === "click") {
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.05);
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } else if (type === "tick") {
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(vol * 0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          osc.start(now);
+          osc.stop(now + 0.03);
+        } else if (type === "complete") {
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.09); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.18); // G5
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+          osc.start(now);
+          osc.stop(now + 0.36);
+        }
+      } catch (e) {
+        // Ignore audio errors if blocked by browser autoplay policy
+      }
+    }
+
+    function showToast(msg, color = "#63D471") {
+      const banner = document.getElementById("toastBanner");
+      const text = document.getElementById("toastMessage");
+      const icon = document.getElementById("toastIcon");
+      text.textContent = msg;
+      icon.style.backgroundColor = color;
+      banner.classList.remove("opacity-0", "translate-y-3");
+      banner.classList.add("opacity-100", "translate-y-0");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        banner.classList.remove("opacity-100", "translate-y-0");
+        banner.classList.add("opacity-0", "translate-y-3");
+      }, 2400);
+    }
+
+    /*************************************************************************
+     * 4. SIDEBAR MENU SWITCHING (WITH LOCKED CONTAINER DIMENSIONS)
+     *************************************************************************/
+    function switchMenu(targetIndex) {
+      if (targetIndex === currentMenuIndex) return;
+      playUISound("click");
+
+      // Move active orange bubble on sidebar (52px step per button)
+      const bubble = document.getElementById("navActiveBubble");
+      bubble.style.transform = `translateY(${targetIndex * 52}px)`;
+
+      // Update button active icon colors
+      document.querySelectorAll(".nav-btn").forEach((btn, idx) => {
+        btn.classList.toggle("active", idx === targetIndex);
+      });
+
+      // Animate out current menu & animate in target menu
+      const oldView = document.getElementById(`menu-${currentMenuIndex}`);
+      const newView = document.getElementById(`menu-${targetIndex}`);
+
+      oldView.classList.remove("active");
+      oldView.classList.add("exit-up");
+      setTimeout(() => {
+        oldView.classList.remove("exit-up");
+      }, 380);
+
+      newView.classList.add("active");
+      currentMenuIndex = targetIndex;
+    }
+
+    function triggerLogoPulse() {
+      playUISound("complete");
+      switchMenu(1);
+      showToast("PulseFit Studio • Day " + currentDay + " Active", "#F26430");
+    }
+
+    /*************************************************************************
+     * 5. DAY 1 - DAY 4 SWITCHING & EXERCISE SELECTION
+     *************************************************************************/
+    function selectDay(dayNumber) {
+      if (dayNumber === currentDay && currentExerciseIndex === 0) return;
+      playUISound("click");
+      stopWorkoutTimer();
+
+      currentDay = dayNumber;
+      currentExerciseIndex = 0;
+
+      // Update Top Day Tabs Styling
+      for (let d = 1; d <= 4; d++) {
+        const tab = document.getElementById(`dayTab-${d}`);
+        const dot = tab.querySelector(".day-dot");
+        const emoji = tab.querySelector(".day-emoji");
+        if (d === dayNumber) {
+          tab.className = "day-tab flex items-center gap-2.5 text-[22px] font-extrabold text-[#1E2235] focus:outline-none";
+          dot.classList.remove("hidden");
+          emoji.classList.remove("hidden");
+        } else {
+          tab.className = "day-tab flex items-center gap-2 text-[22px] font-bold text-[#B0B5C6] focus:outline-none";
+          dot.classList.add("hidden");
+          emoji.classList.add("hidden");
+        }
+      }
+
+      renderExercisesList();
+      loadExerciseIntoStage(0, true);
+      showToast(`Switched to ${WORKOUT_DAYS[dayNumber].dayName} Program ${WORKOUT_DAYS[dayNumber].badge}`, "#F26430");
+    }
+
+    function renderExercisesList() {
+      const dayData = WORKOUT_DAYS[currentDay];
+      const listEl = document.getElementById("exercisesListContainer");
+      const countLabel = document.getElementById("exercisesCountLabel");
+      countLabel.textContent = `${dayData.exercises.length} movements`;
+
+      listEl.innerHTML = dayData.exercises.map((ex, idx) => {
+        const isSelected = idx === currentExerciseIndex;
+        let statusHTML = "";
+
+        if (ex.status === "progress") {
+          // Orange partial progress ring matching item 1 in reference image
+          statusHTML = `
+            <div class="w-6 h-6 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8.5" fill="none" stroke="#E9EDF5" stroke-width="2.6"/>
+                <circle cx="12" cy="12" r="8.5" fill="none" stroke="#F26430" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="53.4" stroke-dashoffset="18" transform="rotate(-90 12 12)"/>
+              </svg>
+            </div>
+          `;
+        } else if (ex.status === "done") {
+          // Solid green checkmark circle matching items 2 & 3 in reference image
+          statusHTML = `
+            <div class="w-5 h-5 rounded-full bg-[#63D471] text-white flex items-center justify-center shrink-0 shadow-[0_3px_8px_rgba(99,212,113,0.35)]">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          `;
+        } else {
+          // Coral-red cross circle matching item 4 in reference image
+          statusHTML = `
+            <div class="w-5 h-5 rounded-full bg-[#FF5660] text-white flex items-center justify-center shrink-0 shadow-[0_3px_8px_rgba(255,86,96,0.35)]">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </div>
+          `;
+        }
+
+        return `
+          <div onclick="selectExercise(${idx})" class="exercise-row group flex items-center justify-between ${isSelected ? 'selected' : ''}">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <!-- Rounded Studio Real Human Photo Thumbnail (74px x 54px) -->
+              <div class="w-[74px] h-[54px] rounded-[16px] overflow-hidden shrink-0 shadow-sm">
+                ${getMiniThumbnailHTML(ex)}
+              </div>
+              <div class="min-w-0">
+                <div class="text-[13.5px] font-extrabold text-[#1E2235] truncate">${ex.title}</div>
+                <div class="flex items-center gap-2 text-[11px] font-semibold text-[#8E95A9] mt-1">
+                  <span class="flex items-center gap-1">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#6D748C"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" stroke="#FFF" stroke-width="2.2" fill="none"/></svg>
+                    ${ex.durationMins}
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#6D748C"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    ${ex.kcal}
+                  </span>
+                </div>
+              </div>
+            </div>
+            ${statusHTML}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function selectExercise(index) {
+      if (index === currentExerciseIndex) return;
+      playUISound("click");
+      stopWorkoutTimer();
+      currentExerciseIndex = index;
+      renderExercisesList();
+      loadExerciseIntoStage(index, true);
+    }
+
+    function nextExercise() {
+      const dayData = WORKOUT_DAYS[currentDay];
+      const nextIdx = (currentExerciseIndex + 1) % dayData.exercises.length;
+      selectExercise(nextIdx);
+    }
+
+    function loadExerciseIntoStage(index, animate = false) {
+      const dayData = WORKOUT_DAYS[currentDay];
+      const ex = dayData.exercises[index];
+
+      // Update Counter & Subtitle ("Exercise 1/5" on initial load to match screenshot)
+      const denom = index < dayData.headerTotalCount ? dayData.headerTotalCount : dayData.exercises.length;
+      document.getElementById("stageCounterTitle").textContent = `Exercise ${index + 1}/${denom}`;
+      document.getElementById("stageSubtitle").textContent = ex.title;
+
+      // Update Stage Background & Artwork
+      const stageBgEl = document.getElementById("stageBackground");
+      stageBgEl.style.background = ex.stageBg;
+
+      const visualContainer = document.getElementById("stageVisualContainer");
+      if (animate) {
+        visualContainer.style.opacity = "0";
+        visualContainer.style.transform = "scale(0.97) translateY(6px)";
+        setTimeout(() => {
+          visualContainer.innerHTML = getStageArtworkHTML(ex, isTimerRunning);
+          visualContainer.style.opacity = "1";
+          visualContainer.style.transform = "scale(1) translateY(0)";
+        }, 160);
+      } else {
+        visualContainer.innerHTML = getStageArtworkHTML(ex, isTimerRunning);
+      }
+
+      // Update Favorite Button State
+      const likeBtn = document.getElementById("likeBtn");
+      likeBtn.style.backgroundColor = ex.liked ? "#FF5660" : "#B0B7C9";
+
+      // Update 4 Metric Pills
+      document.getElementById("metricType").textContent = ex.category;
+      document.getElementById("metricDiff").textContent = ex.difficulty;
+      document.getElementById("metricTotalTime").textContent = `${ex.totalTimeSec}sec`;
+      remainingRealTime = ex.realTimeSec;
+      totalExerciseTime = ex.totalTimeSec;
+      document.getElementById("metricRealTime").textContent = `${remainingRealTime}sec`;
+
+      // Update Circular Progress Ring around Play/Pause button
+      updateStageProgressRing();
+
+      // Populate Scrollable Description Timeline Steps
+      const descContainer = document.getElementById("descriptionScrollContainer");
+      descContainer.innerHTML = ex.steps.map((step, sIdx) => {
+        const isLast = sIdx === ex.steps.length - 1;
+        return `
+          <div class="flex gap-4 relative">
+            <!-- Numbered Circle + Vertical Connector Line -->
+            <div class="flex flex-col items-center shrink-0">
+              <div class="w-6 h-6 rounded-full bg-[#1E2235] text-white text-[11px] font-bold flex items-center justify-center shadow-sm z-10">
+                ${step.stepNum}
+              </div>
+              ${!isLast ? `<div class="w-[1.5px] flex-1 bg-[#B8BFCE] my-1.5"></div>` : `<div class="w-[1.5px] h-6 bg-[#B8BFCE] mt-1.5"></div>`}
+            </div>
+
+            <!-- Step Content -->
+            <div class="pb-2 flex-1">
+              <div class="text-[12.5px] font-extrabold text-[#1E2235]">${step.heading}</div>
+              <p class="text-[11.5px] font-medium text-[#525A6E] leading-relaxed mt-0.5">
+                ${step.text}
+              </p>
+              ${step.subHeading ? `
+                <div class="text-[12.5px] font-extrabold text-[#1E2235] mt-3">${step.subHeading}</div>
+                <p class="text-[11.5px] font-medium text-[#525A6E] leading-relaxed mt-0.5">
+                  ${step.subText}
+                </p>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join("");
+      descContainer.scrollTop = 0;
+    }
+
+    /*************************************************************************
+     * 6. INTERACTIVE WORKOUT TIMER & PROGRESS RING
+     *************************************************************************/
+    function updateStageProgressRing() {
+      const circle = document.getElementById("stageProgressCircle");
+      const circumference = 201; // 2 * pi * 32
+      // On initial default state (30sec / 45sec), match the exact orange arc length on bottom-right of button
+      const progressRatio = (totalExerciseTime - remainingRealTime) / totalExerciseTime;
+      const visualRatio = Math.max(0.38, Math.min(1, progressRatio + 0.35));
+      const offset = circumference - visualRatio * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    function toggleWorkoutTimer() {
+      playUISound("click");
+      if (isTimerRunning) {
+        stopWorkoutTimer();
+        showToast("Workout timer paused", "#8E95A9");
+      } else {
+        startWorkoutTimer();
+        showToast("Workout timer started! Keep breathing steadily 🔥", "#F26430");
+      }
+    }
+
+    function startWorkoutTimer() {
+      isTimerRunning = true;
+      document.getElementById("liveWorkoutBadge").classList.remove("hidden");
+      document.getElementById("liveWorkoutBadge").classList.add("flex");
+      document.getElementById("pauseIcon").classList.remove("hidden");
+      document.getElementById("playIcon").classList.add("hidden");
+
+      const ex = WORKOUT_DAYS[currentDay].exercises[currentExerciseIndex];
+      document.getElementById("stageVisualContainer").innerHTML = getStageArtworkHTML(ex, true);
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (remainingRealTime > 0) {
+          remainingRealTime--;
+          playUISound("tick");
+          document.getElementById("metricRealTime").textContent = `${remainingRealTime}sec`;
+          updateStageProgressRing();
+        } else {
+          // Exercise Completed!
+          playUISound("complete");
+          stopWorkoutTimer();
+          ex.status = "done";
+          userScore += 15;
+          document.getElementById("userScoreCounter").textContent = userScore;
+          renderExercisesList();
+          showToast(`Completed ${ex.title}! +15 XP Earned 🎉`, "#63D471");
+          remainingRealTime = ex.totalTimeSec;
+        }
+      }, 1000);
+    }
+
+    function stopWorkoutTimer() {
+      isTimerRunning = false;
+      clearInterval(timerInterval);
+      document.getElementById("liveWorkoutBadge").classList.add("hidden");
+      document.getElementById("liveWorkoutBadge").classList.remove("flex");
+      const ex = WORKOUT_DAYS[currentDay].exercises[currentExerciseIndex];
+      document.getElementById("stageVisualContainer").innerHTML = getStageArtworkHTML(ex, false);
+    }
+
+    /*************************************************************************
+     * 7. HEART PARTICLE BURST & VERTICAL VOLUME SLIDER
+     *************************************************************************/
+    function toggleFavoriteExercise(event) {
+      playUISound("click");
+      const ex = WORKOUT_DAYS[currentDay].exercises[currentExerciseIndex];
+      ex.liked = !ex.liked;
+
+      const btn = document.getElementById("likeBtn");
+      btn.classList.remove("heart-pop");
+      void btn.offsetWidth;
+      btn.classList.add("heart-pop");
+      btn.style.backgroundColor = ex.liked ? "#FF5660" : "#98A0B3";
+
+      if (ex.liked) {
+        spawnHeartParticles(btn);
+        showToast(`Saved "${ex.title}" to Favorite Movements ❤️`, "#FF5660");
+      } else {
+        showToast(`Removed "${ex.title}" from Favorites`, "#8E95A9");
+      }
+    }
+
+    function spawnHeartParticles(containerBtn) {
+      for (let i = 0; i < 6; i++) {
+        const p = document.createElement("span");
+        p.className = "heart-particle text-xs";
+        p.textContent = "❤️";
+        const angle = (Math.PI * 2 * i) / 6;
+        const dist = 24 + Math.random() * 16;
+        p.style.setProperty("--tx", `${Math.cos(angle) * dist}px`);
+        p.style.setProperty("--ty", `${Math.sin(angle) * dist - 10}px`);
+        containerBtn.appendChild(p);
+        setTimeout(() => p.remove(), 750);
+      }
+    }
+
+    // Vertical Volume Drag Interaction
+    let isDraggingVolume = false;
+    function startVolumeDrag(e) {
+      isDraggingVolume = true;
+      updateVolumeFromEvent(e);
+      window.addEventListener("mousemove", onVolumeMove);
+      window.addEventListener("mouseup", stopVolumeDrag);
+      window.addEventListener("touchmove", onVolumeMove);
+      window.addEventListener("touchend", stopVolumeDrag);
+    }
+
+    function onVolumeMove(e) {
+      if (!isDraggingVolume) return;
+      updateVolumeFromEvent(e);
+    }
+
+    function stopVolumeDrag() {
+      isDraggingVolume = false;
+      window.removeEventListener("mousemove", onVolumeMove);
+      window.removeEventListener("mouseup", stopVolumeDrag);
+      window.removeEventListener("touchmove", onVolumeMove);
+      window.removeEventListener("touchend", stopVolumeDrag);
+    }
+
+    function updateVolumeFromEvent(e) {
+      const track = document.getElementById("volumeTrack");
+      const rect = track.getBoundingClientRect();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const relY = rect.bottom - clientY;
+      const ratio = Math.max(0, Math.min(1, relY / rect.height));
+      audioVolume = ratio;
+      isMuted = ratio <= 0.02;
+      renderVolumeUI();
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      if (!isMuted && audioVolume < 0.15) audioVolume = 0.62;
+      renderVolumeUI();
+      playUISound("click");
+      showToast(isMuted ? "Workout Audio Muted 🔇" : `Volume ${Math.round(audioVolume * 100)}% 🔊`, "#1E2235");
+    }
+
+    function renderVolumeUI() {
+      const pct = isMuted ? 0 : Math.round(audioVolume * 100);
+      document.getElementById("volumeFill").style.height = `${pct}%`;
+      document.getElementById("volumeKnob").style.bottom = `calc(${pct}% - 8px)`;
+      const svg = document.getElementById("speakerIconSvg");
+      if (isMuted || pct === 0) {
+        svg.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z" fill="#9AA1B4"></path><line x1="22" y1="9" x2="16" y2="15" stroke="#FF5660" stroke-width="2.2" stroke-linecap="round"/><line x1="16" y1="9" x2="22" y2="15" stroke="#FF5660" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else {
+        svg.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z" fill="#1E2235"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="#1E2235" stroke-width="2.2" stroke-linecap="round"></path>`;
+      }
+    }
+
+    /*************************************************************************
+     * 8. POPULATING THE OTHER 4 MENUS & MODALS (ALL SCROLLABLE INTERNALLY)
+     *************************************************************************/
+    function initSecondaryMenus() {
+      // --- MENU 0: Dashboard Overview ---
+      updateDashboardChart("kcal");
+
+      const meals = [
+        { time: "07:30 AM", name: "Pre-Workout Oat & Berry Bowl", macros: "42g Carbs • 18g Protein", kcal: "320 Kcal", done: true, photo: "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=160&q=80" },
+        { time: "09:15 AM", name: "Coach-Guided Morning Hydration & Mobility", macros: "Zero Sugar • 5g BCAA", kcal: "25 Kcal", done: true, photo: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=160&q=80" },
+        { time: "12:30 PM", name: "Grilled Salmon, Quinoa & Avocado Salad", macros: "38g Protein • 22g Healthy Fats", kcal: "540 Kcal", done: true, photo: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=160&q=80" },
+        { time: "03:45 PM", name: "Greek Yogurt & Roasted Almonds Snack", macros: "20g Protein • 12g Carbs", kcal: "215 Kcal", done: false, photo: "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=160&q=80" },
+        { time: "07:00 PM", name: "Lean Herb Chicken Breast & Sweet Potato", macros: "45g Protein • 48g Carbs", kcal: "490 Kcal", done: false, photo: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=160&q=80" },
+        { time: "09:30 PM", name: "Evening Stretching & Recovery Tea", macros: "Deep Sleep Support", kcal: "50 Kcal", done: false, photo: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=160&q=80" }
+      ];
+      document.getElementById("mealPlanScrollList").innerHTML = meals.map(m => `
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-[#F8F9FC] border border-slate-100 hover:bg-slate-100/70 transition">
+          <div class="flex items-center gap-3.5">
+            <img src="${m.photo}" alt="${m.name}" class="w-12 h-11 rounded-xl object-cover shadow-sm shrink-0" onerror="this.src='https://placehold.co/96x88/FFF3D1/F26430?text=Meal'" />
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-extrabold text-[#F26430] uppercase">${m.time}</span>
+                <span class="text-xs font-extrabold text-[#1E2235]">${m.name}</span>
+              </div>
+              <div class="text-[11px] font-medium text-[#8E95A9] mt-0.5">${m.macros}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-extrabold text-[#1E2235]">${m.kcal}</span>
+            <span class="w-5 h-5 rounded-full ${m.done ? 'bg-[#63D471] text-white' : 'bg-slate-200 text-slate-400'} flex items-center justify-center text-[10px] font-bold">✓</span>
+          </div>
+        </div>
+      `).join("");
+
+      const roadmap = [
+        { day: "Day 1", focus: "Abdominal & Stability Ball Core", mins: "45 mins", status: "Active Today", dayLink: 1, photo: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 2", focus: "HIIT Kettlebell & Lower Body Sculpt", mins: "50 mins", status: "Ready", dayLink: 2, photo: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 3", focus: "Dumbbell Thrusters & Balance", mins: "45 mins", status: "Ready", dayLink: 3, photo: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 4", focus: "Dynamic Core Flow & Mobility", mins: "40 mins", status: "Ready", dayLink: 4, photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 5", focus: "Active Recovery Yoga & Foam Roll", mins: "30 mins", status: "Upcoming", dayLink: 1, photo: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 6", focus: "Full Body Metabolic Circuit", mins: "55 mins", status: "Upcoming", dayLink: 2, photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=140&q=80" },
+        { day: "Day 7", focus: "Rest & Mindfulness Breathing", mins: "20 mins", status: "Upcoming", dayLink: 4, photo: "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=140&q=80" }
+      ];
+      document.getElementById("weeklyRoadmapList").innerHTML = roadmap.map(r => `
+        <div onclick="switchMenu(1); selectDay(${r.dayLink});" class="p-2.5 rounded-2xl bg-[#F8F9FC] hover:bg-[#F0F3FA] cursor-pointer transition flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <img src="${r.photo}" alt="${r.day}" class="w-11 h-11 rounded-xl object-cover shadow-sm shrink-0" onerror="this.src='https://placehold.co/88x88/CBE0EC/1E2235?text=Fit'" />
+            <div>
+              <div class="text-xs font-extrabold text-[#1E2235]">${r.day} • ${r.focus}</div>
+              <div class="text-[11px] font-semibold text-[#8E95A9] mt-0.5">${r.mins} • ${r.status}</div>
+            </div>
+          </div>
+          <span class="text-xs font-bold text-[#F26430] shrink-0">Open →</span>
+        </div>
+      `).join("");
+
+      // --- MENU 2: Community & Friends (With Real Human Portraits & Shared Workout Photos) ---
+      const feedItems = [
+        { 
+          name: "Maya S.", 
+          avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80",
+          action: "completed Day 1 Abdominal muscles & burned 290 Kcal!", 
+          time: "4 mins ago • Studio Session", 
+          cheers: 18 
+        },
+        { 
+          name: "Liam K.", 
+          avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=400&q=80",
+          action: "set a new 90-second Plank Core Hold personal record 🔥", 
+          time: "19 mins ago • Home Gym", 
+          cheers: 24 
+        },
+        { 
+          name: "Noah T.", 
+          avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=400&q=80",
+          action: "finished Jumping on ball with 100% accuracy!", 
+          time: "42 mins ago • Core Club", 
+          cheers: 12 
+        },
+        { 
+          name: "Chloe R.", 
+          avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80",
+          action: "unlocked the Beginner 1,200 XP Milestone Badge 🏆", 
+          time: "1 hr ago • Strength Zone", 
+          cheers: 31 
+        },
+        { 
+          name: "Lucas V.", 
+          avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80",
+          action: "joined the 7-Day Stability Ball Core Challenge!", 
+          time: "2 hrs ago • PulseFit Hub", 
+          cheers: 9 
+        },
+        { 
+          name: "Sofia M.", 
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80", 
+          workoutPhoto: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=400&q=80",
+          action: "completed Day 3 Dumbbell Thruster Press!", 
+          time: "3 hrs ago • Morning Flow", 
+          cheers: 15 
+        }
+      ];
+      document.getElementById("communityFeedList").innerHTML = feedItems.map((f) => `
+        <div class="p-3.5 rounded-2xl bg-[#F8F9FC] flex items-center justify-between gap-3 border border-slate-100">
+          <div class="flex items-center gap-3.5 min-w-0">
+            <img src="${f.avatar}" alt="${f.name}" class="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow-sm shrink-0" onerror="this.src='https://placehold.co/88x88/EDE7FF/1E2235?text=U'" />
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-[#1E2235] leading-snug"><span class="font-extrabold">${f.name}</span> ${f.action}</div>
+              <div class="text-[10.5px] font-semibold text-[#8E95A9] mt-0.5">${f.time}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <img src="${f.workoutPhoto}" alt="Workout snapshot" class="w-14 h-11 rounded-xl object-cover shadow-sm hidden sm:block" onerror="this.style.display='none'" />
+            <button onclick="cheerFriend(this, ${f.cheers})" class="px-3 py-1.5 rounded-xl bg-white text-[#F26430] text-xs font-extrabold shadow-sm hover:scale-105 transition">
+              👏 ${f.cheers}
+            </button>
+          </div>
+        </div>
+      `).join("");
+
+      const friendsList = [
+        { rank: 1, name: "Chloe R.", score: 1340, level: "Beginner+", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=140&q=80" },
+        { rank: 2, name: "Maya S.", score: 1285, level: "Beginner+", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=140&q=80" },
+        { rank: 3, name: "Liam K.", score: 1150, level: "Beginner", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=140&q=80" },
+        { rank: 4, name: "You (Alex)", score: 1021, level: "Beginner", isMe: true, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=140&q=80" },
+        { rank: 5, name: "Noah T.", score: 980, level: "Beginner", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=140&q=80" },
+        { rank: 6, name: "Sofia M.", score: 945, level: "Beginner", avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=140&q=80" },
+        { rank: 7, name: "Lucas V.", score: 890, level: "Beginner", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=140&q=80" },
+        { rank: 8, name: "Ethan B.", score: 860, level: "Beginner", avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=140&q=80" },
+        { rank: 9, name: "Hannah P.", score: 810, level: "Beginner", avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=140&q=80" },
+        { rank: 10, name: "Daniel W.", score: 775, level: "Beginner", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=140&q=80" }
+      ];
+      const lbHTML = friendsList.map(fr => `
+        <div class="p-2.5 rounded-2xl flex items-center justify-between ${fr.isMe ? 'bg-[#FFF0EB] border border-[#F26430]/30' : 'bg-[#F8F9FC]'}">
+          <div class="flex items-center gap-2.5">
+            <span class="w-5 text-center text-xs font-extrabold ${fr.rank <= 3 ? 'text-[#F26430]' : 'text-[#8E95A9]'}">#${fr.rank}</span>
+            <img src="${fr.avatar}" alt="${fr.name}" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" onerror="this.src='https://placehold.co/72x72/DCE2F9/1E2235?text=F'" />
+            <div>
+              <div class="text-xs font-extrabold text-[#1E2235]">${fr.name}</div>
+              <div class="text-[10px] font-bold text-[#8E95A9] uppercase">${fr.level}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-extrabold text-[#1E2235]">${fr.score} pts</span>
+            ${!fr.isMe ? `<button onclick="showToast('Challenge sent to ${fr.name}! ⚡', '#F26430')" class="px-2.5 py-1 rounded-lg bg-white text-[10px] font-extrabold text-[#F26430] shadow-sm hover:bg-[#F26430] hover:text-white transition">Challenge</button>` : ''}
+          </div>
+        </div>
+      `).join("");
+      document.getElementById("leaderboardScrollList").innerHTML = lbHTML;
+      document.getElementById("modalFriendsScroll").innerHTML = lbHTML;
+
+      // --- MENU 3: Analytics & Progress ---
+      const muscles = [
+        { zone: "Upper & Lower Abdominals", pct: 92, color: "#F26430", pr: "45s Stability Ball Hold" },
+        { zone: "Obliques & Transverse Core", pct: 84, color: "#8B6BF2", pr: "32 Russian Twists" },
+        { zone: "Quadriceps & Glute Medius", pct: 78, color: "#63D471", pr: "15m Ball Bounce" },
+        { zone: "Anterior & Lateral Deltoids", pct: 74, color: "#38BDF8", pr: "12kg Dumbbell Press" },
+        { zone: "Hamstrings & Posterior Chain", pct: 68, color: "#F59E0B", pr: "20 Ball Curls" },
+        { zone: "Thoracic & Hip Mobility", pct: 88, color: "#EC4899", pr: "Full Cobra Extension" }
+      ];
+      document.getElementById("muscleAnalyticsList").innerHTML = muscles.map(m => `
+        <div class="p-3.5 rounded-2xl bg-[#F8F9FC]">
+          <div class="flex justify-between text-xs font-extrabold text-[#1E2235] mb-1.5">
+            <span>${m.zone}</span>
+            <span class="text-[#8E95A9]">${m.pr} • <strong class="text-[#1E2235]">${m.pct}%</strong></span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+            <div class="h-full rounded-full" style="width:${m.pct}%; background:${m.color}"></div>
+          </div>
+        </div>
+      `).join("");
+
+      const history = [
+        { date: "Today • 09:30 AM", title: "Day 1 • Abdominal & Ball Routine", kcal: "290 Kcal", mins: "45 mins", photo: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=140&q=80" },
+        { date: "Yesterday • 06:15 PM", title: "Core Mobility & Dumbbell Sculpt", kcal: "310 Kcal", mins: "48 mins", photo: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=140&q=80" },
+        { date: "2 Days Ago", title: "Plyometric Jump & Swiss Ball", kcal: "340 Kcal", mins: "50 mins", photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=140&q=80" },
+        { date: "3 Days Ago", title: "Beginner Foundation Assessment", kcal: "220 Kcal", mins: "35 mins", photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=140&q=80" },
+        { date: "5 Days Ago", title: "Full Body Stretch & Posture Flow", kcal: "180 Kcal", mins: "30 mins", photo: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=140&q=80" },
+        { date: "6 Days Ago", title: "Stability Ball Core Ignition", kcal: "275 Kcal", mins: "42 mins", photo: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=140&q=80" }
+      ];
+      document.getElementById("workoutHistoryLog").innerHTML = history.map(h => `
+        <div class="p-3 rounded-2xl bg-[#F8F9FC] flex items-center justify-between border border-slate-100">
+          <div class="flex items-center gap-3">
+            <img src="${h.photo}" alt="${h.title}" class="w-11 h-11 rounded-xl object-cover shadow-sm shrink-0" onerror="this.src='https://placehold.co/88x88/E3F8EA/1E2235?text=Log'" />
+            <div>
+              <div class="text-[10px] font-bold text-[#F26430] uppercase">${h.date}</div>
+              <div class="text-xs font-extrabold text-[#1E2235] mt-0.5">${h.title}</div>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-xs font-extrabold text-[#63D471]">${h.kcal}</div>
+            <div class="text-[10.5px] font-semibold text-[#8E95A9]">${h.mins}</div>
+          </div>
+        </div>
+      `).join("");
+
+      // --- MENU 4: Coach Chat & Settings ---
+      renderCoachChat();
+      const settingsItems = [
+        { label: "Voice Countdown Cues", desc: "Play audio ticks during final 10 seconds", checked: true },
+        { label: "Auto-Advance Next Exercise", desc: "Automatically load next movement after rest", checked: true },
+        { label: "High-Contrast Form Guides", desc: "Show anatomical posture overlays on stage", checked: false },
+        { label: "Friend Challenge Notifications", desc: "Allow real-time cheers from Beginner league", checked: true },
+        { label: "Apple Health & Google Fit Sync", desc: "Sync heart rate & calorie burn automatically", checked: true },
+        { label: "Rest Interval Duration", desc: "Default 15 seconds between exercises", checked: true }
+      ];
+      document.getElementById("settingsScrollList").innerHTML = settingsItems.map((s, idx) => `
+        <div class="p-3.5 rounded-2xl bg-[#F8F9FC] flex items-center justify-between">
+          <div>
+            <div class="text-xs font-extrabold text-[#1E2235]">${s.label}</div>
+            <div class="text-[11px] font-medium text-[#8E95A9] mt-0.5">${s.desc}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" ${s.checked ? 'checked' : ''} onchange="playUISound('click'); showToast('Preference updated ✓')" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#F26430]"></div>
+          </label>
+        </div>
+      `).join("");
+    }
+
+    // Dashboard Bar Chart Renderer
+    function updateDashboardChart(mode, btnEl) {
+      if (btnEl) {
+        playUISound("click");
+        document.querySelectorAll(".dash-chart-tab").forEach(b => {
+          b.className = "dash-chart-tab px-3 py-1.5 rounded-lg text-[#8E95A9]";
+        });
+        btnEl.className = "dash-chart-tab px-3 py-1.5 rounded-lg bg-white text-[#1E2235] shadow-sm";
+      }
+      const data = mode === "mins"
+        ? [ {d:"Mon",v:35,h:65}, {d:"Tue",v:45,h:82}, {d:"Wed",v:30,h:55}, {d:"Thu",v:50,h:92,active:true}, {d:"Fri",v:40,h:74}, {d:"Sat",v:25,h:48}, {d:"Sun",v:20,h:38} ]
+        : [ {d:"Mon",v:210,h:62}, {d:"Tue",v:275,h:80}, {d:"Wed",v:190,h:55}, {d:"Thu",v:290,h:94,active:true}, {d:"Fri",v:240,h:72}, {d:"Sat",v:165,h:50}, {d:"Sun",v:120,h:36} ];
+
+      const unit = mode === "mins" ? "m" : "kcal";
+      document.getElementById("dashboardBarsContainer").innerHTML = data.map(item => `
+        <div class="flex flex-col items-center h-full justify-end group cursor-pointer" onclick="showToast('${item.d}: ${item.v} ${unit}', '#F26430')">
+          <span class="text-[10px] font-extrabold text-[#1E2235] opacity-0 group-hover:opacity-100 transition mb-1">${item.v}</span>
+          <div class="w-full max-w-[34px] rounded-xl transition-all duration-500 ${item.active ? 'bg-[#F26430] shadow-[0_6px_14px_rgba(242,100,48,0.35)]' : 'bg-[#E9ECF6] group-hover:bg-[#CBD2E6]'}" style="height:${item.h}%"></div>
+          <span class="text-[11px] font-bold ${item.active ? 'text-[#1E2235]' : 'text-[#8E95A9]'} mt-2">${item.d}</span>
+        </div>
+      `).join("");
+    }
+
+    function addWater() {
+      playUISound("complete");
+      hydrationLiters = Math.min(3.5, +(hydrationLiters + 0.25).toFixed(2));
+      document.getElementById("waterCounterText").textContent = `${hydrationLiters} / 2.5 L`;
+      showToast(`Hydration logged: ${hydrationLiters}L 💧`, "#38BDF8");
+    }
+
+    function cheerFriend(btn, baseCount) {
+      playUISound("complete");
+      btn.innerHTML = `👏 ${baseCount + 1}`;
+      btn.classList.add("bg-[#FFF0EB]");
+      showToast("Sent encouragement cheer! 👏", "#F26430");
+    }
+
+    function triggerCheerAll() {
+      playUISound("complete");
+      userScore += 15;
+      document.getElementById("userScoreCounter").textContent = userScore;
+      showToast("Group Cheer sent to all 14 friends! +15 XP 🎉", "#63D471");
+    }
+
+    // Coach Chat Messages
+    const coachConversation = [
+      { sender: "coach", text: "Hi Alex! Welcome to Day 1 of your Beginner Core & Stability program 👶. Notice how holding the teal stability ball activates your deep abdominal wall." },
+      { sender: "user", text: "Should my lower back touch the floor during the Start point?" },
+      { sender: "coach", text: "Great question! In Step 1 (kneeling forearm setup), keep a natural neutral spine. When you transition to the seated V-sit with the ball, tuck your pelvis slightly so your lower back stays supported without rounding." }
+    ];
+
+    function renderCoachChat() {
+      const box = document.getElementById("coachChatMessages");
+      box.innerHTML = coachConversation.map(m => m.sender === "coach" ? `
+        <div class="flex gap-2.5 items-start">
+          <img src="https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=crop&w=120&q=80" alt="Coach Elena" class="w-8 h-8 rounded-full object-cover ring-2 ring-[#EDE7FF] shrink-0" onerror="this.src='https://placehold.co/64x64/EDE7FF/1E2235?text=CE'" />
+          <div class="bg-[#F4F6FB] text-[#1E2235] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs font-medium leading-relaxed max-w-[85%]">
+            ${m.text}
+          </div>
+        </div>
+      ` : `
+        <div class="flex justify-end items-end gap-2">
+          <div class="bg-[#F26430] text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-xs font-semibold leading-relaxed max-w-[82%]">
+            ${m.text}
+          </div>
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="You" class="w-7 h-7 rounded-full object-cover shrink-0" onerror="this.src='https://placehold.co/56x56/DCD6F7/1E2235?text=AR'" />
+        </div>
+      `).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function sendCoachMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById("coachChatInput");
+      const val = input.value.trim();
+      if (!val) return;
+      playUISound("click");
+      coachConversation.push({ sender: "user", text: val });
+      input.value = "";
+      renderCoachChat();
+
+      setTimeout(() => {
+        playUISound("complete");
+        const ex = WORKOUT_DAYS[currentDay].exercises[currentExerciseIndex];
+        coachConversation.push({
+          sender: "coach",
+          text: `For "${ex.title}", focus on exhaling smoothly during the hardest part of the movement and keeping your shoulders relaxed. You're doing awesome at 1021 XP!`
+        });
+        renderCoachChat();
+      }, 650);
+    }
+
+    // Friends Quick Modal
+    function openFriendsModal(highlightName) {
+      playUISound("click");
+      const modal = document.getElementById("friendsModal");
+      const card = document.getElementById("friendsModalCard");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      setTimeout(() => {
+        modal.classList.remove("opacity-0");
+        card.classList.remove("scale-95");
+        card.classList.add("scale-100");
+      }, 20);
+      if (highlightName) {
+        showToast(`Viewing ${highlightName}'s Beginner League profile`, "#8B6BF2");
+      }
+    }
+
+    function closeFriendsModal() {
+      playUISound("click");
+      const modal = document.getElementById("friendsModal");
+      const card = document.getElementById("friendsModalCard");
+      modal.classList.add("opacity-0");
+      card.classList.remove("scale-100");
+      card.classList.add("scale-95");
+      setTimeout(() => {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }, 280);
+    }
+
+    /*************************************************************************
+     * 9. INITIALIZATION ON WINDOW LOAD
+     *************************************************************************/
+    window.addEventListener("DOMContentLoaded", () => {
+      renderExercisesList();
+      loadExerciseIntoStage(0, false);
+      initSecondaryMenus();
+    });
+  </script>
+</body>
+</html>
