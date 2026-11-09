@@ -5,6 +5,10 @@ frontend template. No build step: open `index.html` and it runs.
 
 ![Stack](https://img.shields.io/badge/stack-vanilla%20JS%20%2B%20Tailwind-F26430)
 
+## Preview
+
+![PulseFit Dashboard Preview](image.png)
+
 ## Features
 
 - 5 views: Overview · Workout Session · Community · Analytics · Coach Chat
